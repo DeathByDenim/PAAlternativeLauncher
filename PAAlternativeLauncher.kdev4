@@ -1,0 +1,4 @@
+[Project]
+Name=PAAlternativeLauncher
+Manager=KDevCMakeManager
+VersionControl=kdevgit
