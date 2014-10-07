@@ -8,150 +8,54 @@
 #include <zlib.h>
 #include <qjson/parser.h>
 #include <QDebug>
-#include <QFileInfo>
 #include <QDir>
 #include <QtConcurrentMap>
 #include <QFuture>
 #include <QFutureWatcher>
 #include "sha1.h"
 
-QString Patcher::m_install_path;
-
 Patcher::Patcher(QWidget* parent)
  : m_parent(parent)
+ , m_buffer_increment(8*1024)
+ , m_manifest_bytearray(m_buffer_increment, Qt::Uninitialized)
 {
 	m_access_manager = new QNetworkAccessManager(this);
-	connect(m_access_manager, SIGNAL(finished(QNetworkReply*)), SLOT(replyFinished(QNetworkReply*)));
 }
 
 Patcher::~Patcher()
 {
-	m_manifest_file.close();
+	while(!m_bundles.isEmpty())
+	{
+		delete m_bundles[0];
+		m_bundles.removeFirst();
+	}
 }
 
 void Patcher::decodeStreamsData(QByteArray data)
 {
-	int curlylevel = 0;
-	int squarelevel = 0;
-	bool insidequotation = false;
-	bool afterbackslash = false;
-
-	QString buffer;
-
-	Stream currentstream;
-
-	enum
+	QJson::Parser parser;
+	bool ok;
+	QVariantList streams = parser.parse(data, &ok).toMap()["Streams"].toList();
+	if(!ok)
 	{
-		none,
-		streamname,
-		buildid,
-		description,
-		downloadurl,
-		authsuffix,
-		manifestname,
-		titlefolder
-	} next = none;
-
-	for(int i = 0; i < data.size(); i++)
+		QMessageBox::critical(m_parent, tr("JSON error"), tr("Could not decode streams JSON. File was corrupted."));
+		return;
+	}
+	
+	for(QVariantList::const_iterator stream = streams.constBegin(); stream != streams.constEnd(); ++stream)
 	{
-		if(insidequotation)
-		{
-			afterbackslash = false;
+		QVariantMap streammap = stream->toMap();
 
-			if(data[i] == '\\' && !afterbackslash)
-				afterbackslash = true;
-			else if(data[i] == '"')
-			{
-				insidequotation = false;
-				
-				if(buffer == "StreamName")
-					next = streamname;
-				else if(buffer == "BuildId")
-					next = buildid;
-				else if(buffer == "Description")
-					next = description;
-				else if(buffer == "DownloadUrl")
-					next = downloadurl;
-				else if(buffer == "AuthSuffix")
-					next = authsuffix;
-				else if(buffer == "ManifestName")
-					next = manifestname;
-				else if(buffer == "TitleFolder")
-					next = titlefolder;
-				else
-				{
-					switch(next)
-					{
-						case streamname:
-							currentstream.StreamName = buffer;
-							break;
-						case buildid:
-							currentstream.BuildId = buffer;
-							break;
-						case description:
-							currentstream.Description = buffer;
-							break;
-						case downloadurl:
-							currentstream.DownloadUrl = buffer;
-							break;
-						case authsuffix:
-							currentstream.AuthSuffix = buffer;
-							break;
-						case manifestname:
-							currentstream.ManifestName = buffer;
-							break;
-						case titlefolder:
-							currentstream.TitleFolder = buffer;
-							break;
-						default:
-							break;
-					}
-					next = none;
-				}
+		Stream currentstream;
+		currentstream.AuthSuffix = streammap["AuthSuffix"].toString();
+		currentstream.BuildId = streammap["BuildId"].toString();
+		currentstream.Description = streammap["Description"].toString();
+		currentstream.DownloadUrl = streammap["DownloadUrl"].toString();
+		currentstream.ManifestName = streammap["ManifestName"].toString();
+		currentstream.StreamName = streammap["StreamName"].toString();
+		currentstream.TitleFolder = streammap["TitleFolder"].toString();
 
-				buffer = "";
-			}
-			else
-				buffer += data[i];
-		}
-		else
-		{
-			switch(data[i])
-			{
-				case '{':
-					curlylevel++;
-					break;
-				case '}':
-					if(curlylevel == 2)
-					{
-						m_streams << currentstream;
-						currentstream.AuthSuffix = "";
-						currentstream.BuildId = "";
-						currentstream.Description = "";
-						currentstream.DownloadUrl = "";
-						currentstream.ManifestName = "";
-						currentstream.StreamName = "";
-						currentstream.TitleFolder = "";
-					}
-					curlylevel--;
-					if(curlylevel < 0)
-						return;
-					break;
-				case '[':
-					squarelevel++;
-					break;
-				case ']':
-					squarelevel--;
-					if(squarelevel < 0)
-						return;
-					break;
-				case '"':
-					insidequotation = true;
-					break;
-				default:
-					break;
-			}
-		}
+		m_streams << currentstream;
 	}
 }
 
@@ -166,52 +70,42 @@ QStringList Patcher::streamNames()
 	return result;
 }
 
-void Patcher::downloadStream(const Patcher::Stream &stream)
-{
-	m_manifest_file.setFileName("manifest.gz");
-	m_manifest_file.open(QIODevice::WriteOnly);
-	QUrl manifesturl(stream.DownloadUrl + '/' + stream.TitleFolder + '/' + stream.ManifestName + stream.AuthSuffix);
-	QNetworkRequest request(manifesturl);
-	request.setAttribute(QNetworkRequest::User, "manifest");
-	QNetworkReply *reply = m_access_manager->get(request);
-	connect(reply, SIGNAL(downloadProgress(qint64, qint64)), SLOT(manifestDownloadProgress(qint64,qint64)));
-	connect(reply, SIGNAL(readyRead()), SLOT(manifestReadyRead()));
-}
-
 void Patcher::downloadStream(const QString streamname)
 {
 	for(QList<Stream>::const_iterator stream = m_streams.constBegin(); stream != m_streams.constEnd(); ++stream)
 	{
 		if(streamname == stream->StreamName)
 		{
-			downloadStream(*stream);
+			downloadManifest(*stream);
 		}
 	}
 }
 
-void Patcher::replyFinished(QNetworkReply* reply)
+void Patcher::downloadManifest(const Patcher::Stream &stream)
 {
-	if(reply->error() != QNetworkReply::NoError)
-	{
-		QString type = reply->request().attribute(QNetworkRequest::User).toString();
-		QMessageBox::critical(m_parent, QString("Communication error"), "Error while doing " + type + ". Details: " + reply->errorString() + ".");
-	}
-	else if(reply->isFinished())
-	{
-		QString type = reply->request().attribute(QNetworkRequest::User).toString();
-		if(type == "manifest")
-		{
-			QByteArray data = reply->readAll();
-			qDebug() << "read" << data.size() << "bytes";
-			m_manifest_file.write(data);
-			m_manifest_file.close();
-		}
-	}
-	reply->deleteLater();
-}
+	m_current_stream = stream;
 
-void Patcher::manifestDownloadProgress(qint64, qint64)
-{
+	m_manifest_zstream.zalloc = Z_NULL;
+	m_manifest_zstream.zfree = Z_NULL;
+	m_manifest_zstream.opaque = Z_NULL;
+	m_manifest_zstream.next_in = Z_NULL;
+	m_manifest_zstream.avail_in = 0;
+	m_manifest_zstream.next_out = (Bytef *)m_manifest_bytearray.data();
+	m_manifest_zstream.avail_out = m_manifest_bytearray.count();
+
+	// 16+MAX_WBITS means read as gzip.
+	if(inflateInit2(&m_manifest_zstream, 16 + MAX_WBITS) != Z_OK)
+	{
+		qFatal("Couldn't init zlibstream.");
+	}
+
+	QUrl manifesturl(stream.DownloadUrl + '/' + stream.TitleFolder + '/' + stream.ManifestName + stream.AuthSuffix);
+	QNetworkRequest request(manifesturl);
+	QNetworkReply *reply = m_access_manager->get(request);
+	connect(reply, SIGNAL(downloadProgress(qint64, qint64)), SLOT(manifestDownloadProgress(qint64,qint64)));
+	connect(reply, SIGNAL(readyRead()), SLOT(manifestReadyRead()));
+	connect(reply, SIGNAL(finished()), SLOT(manifestFinished()));
+	emit state("Downloading manifest");
 }
 
 void Patcher::manifestReadyRead()
@@ -219,66 +113,132 @@ void Patcher::manifestReadyRead()
 	QNetworkReply *reply = dynamic_cast<QNetworkReply *>(sender());
 	if(reply)
 	{
-		QByteArray data = reply->readAll();
-		qDebug() << "read" << data.size() << "bytes";
-		m_manifest_file.write(data);
+		int inflate_status;
+		QByteArray inputdata = reply->readAll();
+
+		m_manifest_zstream.next_in = (Bytef *)inputdata.data();
+		m_manifest_zstream.avail_in = inputdata.count();
+		do
+		{
+			inflate_status = inflate(&m_manifest_zstream, Z_SYNC_FLUSH);
+			if(m_manifest_zstream.avail_out == 0)
+			{
+				int oldsize = m_manifest_bytearray.count();
+				m_manifest_bytearray.resize(oldsize + m_buffer_increment);
+				m_manifest_zstream.next_out = (Bytef *)m_manifest_bytearray.data() + oldsize;
+				m_manifest_zstream.avail_out = m_buffer_increment;
+			}
+		}
+		while(inflate_status == Z_OK && m_manifest_zstream.avail_in > 0);
+
+		if(inflate_status < 0)
+			qFatal("Decompress error");
 	}
 }
 
-void Patcher::test()
+void Patcher::manifestFinished()
 {
-	QByteArray manifestdata(10*1024*1024, Qt::Uninitialized);
-	gzFile gzf = gzopen("manifest.gz", "r");
-	if(gzf)
-	{
-		int n_read;
-		char *buffer = new char[10*1024*1024];
-		if((n_read = gzread(gzf, manifestdata.data(), 10*1024*1024)) > 0)
-		{
-			manifestdata.truncate(n_read);
+	QNetworkReply *reply = dynamic_cast<QNetworkReply *>(sender());
+	if(!reply)
+		return;
 
-			bool ok;
-			QJson::Parser parser;
-			m_manifest = parser.parse(manifestdata, &ok).toMap();
-			manifestdata.resize(0);
-			if(ok)
-				processManifest(m_manifest);
-		}
-		else
-		{
-			int errnum;
-			QMessageBox::critical(m_parent, "Decompress error", QString("Error while decompressing manifest.gz.\nError was \"%1\".").arg(gzerror(gzf, &errnum)));
-		}
-		delete[] buffer;
-		gzclose(gzf);
+	if(reply->error() != QNetworkReply::NoError)
+	{
+		QMessageBox::critical(m_parent, QString("Communication error"), "Error while downloading manifest.\nDetails: " + reply->errorString() + ".");
 	}
+	else
+	{
+		emit progress(100);
+
+		int inflate_status = inflate(&m_manifest_zstream, Z_SYNC_FLUSH);
+		m_manifest_bytearray.truncate(m_manifest_bytearray.count() - m_manifest_zstream.avail_out);
+		inflateEnd(&m_manifest_zstream);
+
+		if(inflate_status != Z_STREAM_END)
+			qFatal("Decompress error");
+		else
+			verify();
+	}
+	reply->deleteLater();
+}
+
+void Patcher::manifestDownloadProgress(qint64 value, qint64 total)
+{
+	emit progress(100. * value / total);
+}
+
+void Patcher::verify()
+{
+	bool ok;
+	QJson::Parser parser;
+	m_manifest = parser.parse(m_manifest_bytearray, &ok).toMap();
+/*
+	// TODO: Remove me
+	QFile manifestfile("manifest.json");
+	if(manifestfile.open(QIODevice::WriteOnly))
+	{
+		manifestfile.write(m_manifest_bytearray);
+		manifestfile.close();
+	}
+*/
+	m_manifest_bytearray.resize(0);
+	if(ok)
+		processManifest(m_manifest);
 }
 
 void Patcher::processManifest(QVariantMap manifest)
 {
+	emit state("Verifying installation");
+
 	QVariantList bundles = manifest["bundles"].toList();
-	m_num_items = bundles.count();
-	QFuture<bool> status = QtConcurrent::mapped(bundles, verify);
-	QFutureWatcher<bool> *statuswatcher = new QFutureWatcher<bool>(this);
-	connect(statuswatcher, SIGNAL(progressValueChanged(int)), SLOT(verifyProgressValueChanged(int)));
-	connect(statuswatcher, SIGNAL(finished()), SLOT(verifyFinished()));
-	statuswatcher->setFuture(status);
+	m_num_current_verified_items = 0;
+	m_num_total_items = bundles.count();
+	m_total_bundle_download_size = 0;
+	m_current_bundle_downloaded = 0;
+	m_num_current_downloaded_items = 0;
+	m_num_total_download_items = 0;
+	for(QVariantList::const_iterator bundlevariant = bundles.constBegin(); bundlevariant != bundles.constEnd(); ++bundlevariant)
+	{
+		Bundle *bundle = new Bundle(m_install_path, *bundlevariant, m_current_stream.DownloadUrl, m_current_stream.TitleFolder, m_current_stream.AuthSuffix, m_access_manager, m_parent);
+		connect(bundle, SIGNAL(verifyDone(size_t)), SLOT(bundleVerifyDone(size_t)));
+		connect(bundle, SIGNAL(downloadProgress(qint64)), SLOT(bundleDownloadProgress(qint64)));
+		connect(bundle, SIGNAL(done()), SLOT(bundleDownloadDone()));
+		m_bundles.push_back(bundle);
+		bundle->verifyAndMaybeDownload();
+	}
 }
 
-bool Patcher::verify(const QVariant& bundle)
+void Patcher::bundleVerifyDone(size_t size)
 {
-	QVariantList entries = bundle.toMap()["entries"].toList();
-	for(QVariantList::const_iterator entry = entries.constBegin(); entry != entries.constEnd(); ++entry)
+	m_num_current_verified_items++;
+	m_total_bundle_download_size += size;
+	emit progress(100. * m_num_current_verified_items / m_num_total_items);
+	
+	if(m_num_current_verified_items == (size_t)m_bundles.count())
 	{
-		QVariantMap entrymap = entry->toMap();
-		if(QFileInfo(m_install_path + entrymap["filename"].toString()).exists())
+		m_num_total_download_items = 0;
+		for(QList<Bundle *>::const_iterator bundle = m_bundles.constBegin(); bundle != m_bundles.constEnd(); ++bundle)
 		{
-			if(entrymap["checksum"].toString() != (calculateSHA1(m_install_path + entrymap["filename"].toString())))
-				return false;
+			if((*bundle)->state() == Bundle::bad)
+			{
+				m_num_total_download_items++;
+			}
 		}
-	}
 
-	return true;
+		if(m_num_total_download_items == 0)
+			emit state("Done");
+		else
+			emit state("Downloading and installing bundles");
+	}
+}
+
+void Patcher::bundleDownloadDone()
+{
+	m_num_current_downloaded_items++;
+	if(m_num_current_downloaded_items == m_num_total_download_items)
+	{
+		emit state("Done");
+	}
 }
 
 void Patcher::setInstallPath(QString installpath)
@@ -293,43 +253,36 @@ void Patcher::setInstallPath(QString installpath)
 	m_install_path = installdir.absolutePath() + '/';
 }
 
-QString Patcher::calculateSHA1(QString filename)
-{
-	QFile file(filename);
-	if(!file.open(QIODevice::ReadOnly))
-		return QString();
-
-	SHA1 sha;
-	
-	QByteArray data = file.readAll();
-	sha.Input(data.data(), data.size());
-	
-	unsigned int result[5];
-	sha.Result(result);
-
-	return QString("%1%2%3%4%5").arg(result[0], 8, 16, QChar('0')).arg(result[1], 8, 16, QChar('0')).arg(result[2], 8, 16, QChar('0')).arg(result[3], 8, 16, QChar('0')).arg(result[4], 8, 16, QChar('0'));
-}
-
 void Patcher::verifyProgressValueChanged(int value)
 {
-	emit progress(100. * value / m_num_items);
+	emit progress(100. * value / m_num_total_items);
 }
 
-void Patcher::verifyFinished()
+void Patcher::bundleDownloadProgress(qint64 value)
 {
-	QFutureWatcher<bool> *watcher = dynamic_cast< QFutureWatcher<bool>* >(sender());
-	if(watcher)
+	m_current_bundle_downloaded += value;
+	if(m_num_current_verified_items == (size_t)m_bundles.count())
 	{
-		QFuture<bool> status = watcher->future();
-		for(QFuture<bool>::const_iterator bundle_ok = status.constBegin(); bundle_ok != status.constEnd(); ++bundle_ok)
-		{
-			if(!*bundle_ok)
-			{
-				QMessageBox::critical(m_parent, "Verify", "Verify error!");
-				return;
-			}
-		}
-		QMessageBox::information(m_parent, "Verify", "Verification was ok!");
+		emit progress(100. * m_current_bundle_downloaded / m_total_bundle_download_size);
+	}
+}
+
+void Patcher::test()
+{
+	QFile jsonfile("701e589bf732070c256a943aa9d4e64fc5e7617c.json");
+	if(!jsonfile.open(QIODevice::ReadOnly))
+		return;
+
+	QByteArray data = jsonfile.readAll();
+
+	QJson::Parser parser;
+	bool ok;
+	QVariantMap vmap = parser.parse(data, &ok).toMap();
+	if(ok)
+	{
+		Bundle *bundle = new Bundle("/home/jarno/temp/PA/", vmap, "", "", "", m_access_manager, m_parent);
+		bundle->verifyAndMaybeDownload();
+//		delete bundle;
 	}
 }
 

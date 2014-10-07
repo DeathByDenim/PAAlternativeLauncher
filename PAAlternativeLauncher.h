@@ -5,6 +5,7 @@
 #include <QList>
 #include "patcher.h"
 
+class QTextBrowser;
 class QProgressBar;
 class QCheckBox;
 class QLineEdit;
@@ -23,33 +24,42 @@ public:
 	virtual ~PAAlternativeLauncher();
 
 private:
-	QProgressBar *m_progress_widget;
+	QProgressBar *m_patch_progressbar;
+	QLabel *m_patch_label;
 	QNetworkAccessManager *m_network_access_manager;
 	QString m_session_ticket;
 	QWidget *m_login_widget;
 	QWidget *m_download_widget;
-	QLabel *m_patch_text_label;
+	QWidget *m_wait_widget;
+	QTextBrowser *m_patch_text_browser;
 	QComboBox *m_streams_combo_box;
 	QLineEdit *m_username_lineedit;
 	QLineEdit *m_password_lineedit;
-	QCheckBox *m_save_password_check_box;
 	Patcher m_patcher;
 	const QString m_platform;
+    QLineEdit* m_installPathLineEdit;
+	QString m_extraParameters;
+	QMap<QString,QString> m_stream_news;
+	bool m_use_optirun;
 
 	QWidget *createLoginWidget(QWidget* parent);
 	QWidget *createDownloadWidget(QWidget* parent);
+	QWidget *createWaitWidget(QWidget *parent);
 	QString decodeLoginData(const QByteArray& data);
 
 protected:
 	void closeEvent(QCloseEvent *event);
 
 private slots:
-	void installPushButtonPressed();
-	void quitPushButtonPressed();
 	void loginPushButtonClicked(bool);
 	void downloadPushButtonClicked(bool);
+	void installPathButtonClicked(bool);
+	void launchPushButtonClicked(bool);
+	void advancedPushButtonClicked(bool);
 	void replyReceived(QNetworkReply *reply);
 	void patcherProgress(int percentage);
+	void patcherState(QString state);
+	void streamsCurrentIndexChanged(QString streamname);
 };
 
 #endif // PAAlternativeLauncher_H

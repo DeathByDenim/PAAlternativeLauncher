@@ -4,10 +4,13 @@
 #include <QObject>
 #include <QFile>
 #include <QVariantMap>
+#include <QList>
+#include <zlib.h>
+#include <QUrl>
+#include "bundle.h"
 
 class QStringList;
 class QNetworkAccessManager;
-class QNetworkReply;
 class QWidget;
 
 class Patcher : public QObject
@@ -15,7 +18,7 @@ class Patcher : public QObject
 	Q_OBJECT
 
 public:
-	Patcher(QWidget *parent = 0);
+	Patcher(QWidget* parent = 0);
 	~Patcher();
 
 	struct Stream
@@ -36,28 +39,39 @@ public:
 	void test();
 
 private:
-	QList<Stream> m_streams;
-	QNetworkAccessManager *m_access_manager;
-	QFile m_manifest_file;
-	QVariantMap m_manifest;
-	static QString m_install_path;
 	QWidget *m_parent;
-	int m_num_items;
+	QList<Stream> m_streams;
+	z_stream m_manifest_zstream;
+	const int m_buffer_increment;
+	QByteArray m_manifest_bytearray;
+	QNetworkAccessManager *m_access_manager;
+	QVariantMap m_manifest;
+	QString m_install_path;
+	int m_num_total_items;
+	size_t m_num_current_verified_items;
+	Stream m_current_stream;
+	QList<Bundle *> m_bundles;
+	size_t m_num_current_downloaded_items;
+	size_t m_num_total_download_items;
+	size_t m_current_bundle_downloaded;
+	size_t m_total_bundle_download_size;
 
-	void downloadStream(const Patcher::Stream& stream);
+	void downloadManifest(const Patcher::Stream& stream);
 	void processManifest(QVariantMap manifest);
-	static bool verify(const QVariant &entry);
-	static QString calculateSHA1(QString filename);
+	void verify();
 
 private slots:
-	void replyFinished(QNetworkReply *reply);
-	void manifestDownloadProgress(qint64, qint64);
+	void manifestFinished();
+	void manifestDownloadProgress(qint64 value, qint64 total);
 	void manifestReadyRead();
 	void verifyProgressValueChanged(int value);
-	void verifyFinished();
-	
+	void bundleVerifyDone(size_t size);
+	void bundleDownloadProgress(qint64 value);
+	void bundleDownloadDone();
+
 signals:
 	void progress(int);
+	void state(QString);
 };
 
 #endif // PATCHER_H

@@ -8,7 +8,7 @@ include_directories(${QT_INCLUDES} ${CMAKE_CURRENT_BINARY_DIR} ${ZLIB_INCLUDE_DI
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 
-set(PAAlternativeLauncher_SRCS sha1.cpp patcher.cpp PAAlternativeLauncher.cpp main.cpp)
+set(PAAlternativeLauncher_SRCS information.cpp advanceddialog.cpp bundle.cpp sha1.cpp patcher.cpp PAAlternativeLauncher.cpp main.cpp)
 qt4_automoc(${PAAlternativeLauncher_SRCS})
 
 QT4_ADD_RESOURCES(PAAlternativeLauncher_RCC_SRCS PAAlternativeLauncher.qrc)
