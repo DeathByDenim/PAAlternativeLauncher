@@ -4,15 +4,14 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
-#include <QMessageBox>
 #include <zlib.h>
 #include <qjson/parser.h>
-#include <QDebug>
 #include <QDir>
 #include <QtConcurrentMap>
 #include <QFuture>
 #include <QFutureWatcher>
 #include "sha1.h"
+#include "information.h"
 
 Patcher::Patcher(QWidget* parent)
  : m_parent(parent)
@@ -38,7 +37,7 @@ void Patcher::decodeStreamsData(QByteArray data)
 	QVariantList streams = parser.parse(data, &ok).toMap()["Streams"].toList();
 	if(!ok)
 	{
-		QMessageBox::critical(m_parent, tr("JSON error"), tr("Could not decode streams JSON. File was corrupted."));
+		info.critical(tr("JSON error"), tr("Could not decode streams JSON. File was corrupted."));
 		return;
 	}
 	
@@ -96,7 +95,8 @@ void Patcher::downloadManifest(const Patcher::Stream &stream)
 	// 16+MAX_WBITS means read as gzip.
 	if(inflateInit2(&m_manifest_zstream, 16 + MAX_WBITS) != Z_OK)
 	{
-		qFatal("Couldn't init zlibstream.");
+		info.critical("ZLib", tr("Couldn't init zlibstream."));
+		exit(1);
 	}
 
 	QUrl manifesturl(stream.DownloadUrl + '/' + stream.TitleFolder + '/' + stream.ManifestName + stream.AuthSuffix);
@@ -132,7 +132,10 @@ void Patcher::manifestReadyRead()
 		while(inflate_status == Z_OK && m_manifest_zstream.avail_in > 0);
 
 		if(inflate_status < 0)
-			qFatal("Decompress error");
+		{
+			info.critical(tr("I/O error"), tr("Decompress error"));
+			exit(1);
+		}
 	}
 }
 
@@ -144,7 +147,7 @@ void Patcher::manifestFinished()
 
 	if(reply->error() != QNetworkReply::NoError)
 	{
-		QMessageBox::critical(m_parent, QString("Communication error"), "Error while downloading manifest.\nDetails: " + reply->errorString() + ".");
+		info.critical(QString("Communication error"), "Error while downloading manifest.\nDetails: " + reply->errorString() + ".");
 	}
 	else
 	{
@@ -155,7 +158,10 @@ void Patcher::manifestFinished()
 		inflateEnd(&m_manifest_zstream);
 
 		if(inflate_status != Z_STREAM_END)
-			qFatal("Decompress error");
+		{
+			info.critical(tr("I/O error"), tr("Decompress error"));
+			exit(1);
+		}
 		else
 			verify();
 	}
@@ -172,15 +178,7 @@ void Patcher::verify()
 	bool ok;
 	QJson::Parser parser;
 	m_manifest = parser.parse(m_manifest_bytearray, &ok).toMap();
-/*
-	// TODO: Remove me
-	QFile manifestfile("manifest.json");
-	if(manifestfile.open(QIODevice::WriteOnly))
-	{
-		manifestfile.write(m_manifest_bytearray);
-		manifestfile.close();
-	}
-*/
+
 	m_manifest_bytearray.resize(0);
 	if(ok)
 		processManifest(m_manifest);
@@ -246,7 +244,7 @@ void Patcher::setInstallPath(QString installpath)
 	QDir installdir(installpath);
 	if(!installdir.mkpath("."))
 	{
-		QMessageBox::critical(m_parent, "Directory creation", QString("Failed to create directory at \"%1\".)").arg(installpath));
+		info.critical("Directory creation", QString("Failed to create directory at \"%1\".)").arg(installpath));
 		return;
 	}
 
@@ -264,25 +262,6 @@ void Patcher::bundleDownloadProgress(qint64 value)
 	if(m_num_current_verified_items == (size_t)m_bundles.count())
 	{
 		emit progress(100. * m_current_bundle_downloaded / m_total_bundle_download_size);
-	}
-}
-
-void Patcher::test()
-{
-	QFile jsonfile("701e589bf732070c256a943aa9d4e64fc5e7617c.json");
-	if(!jsonfile.open(QIODevice::ReadOnly))
-		return;
-
-	QByteArray data = jsonfile.readAll();
-
-	QJson::Parser parser;
-	bool ok;
-	QVariantMap vmap = parser.parse(data, &ok).toMap();
-	if(ok)
-	{
-		Bundle *bundle = new Bundle("/home/jarno/temp/PA/", vmap, "", "", "", m_access_manager, m_parent);
-		bundle->verifyAndMaybeDownload();
-//		delete bundle;
 	}
 }
 

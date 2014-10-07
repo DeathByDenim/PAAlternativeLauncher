@@ -31,12 +31,6 @@ Bundle::Bundle(QString installpath, QVariant bundlevariant, QString downloadurl,
 		entry.checksum = entryvariantmap["checksum"].toString();
 		entry.executable = entryvariantmap.contains("executable") ? entryvariantmap["executable"].toBool() : false;
 		m_entries.push_back(entry);
-
-if(entry.fullfilename[0].right(strlen("ATIIXP-MODEM.conf")) == "ATIIXP-MODEM.conf")
-{
-	qDebug() << "Here I am";
-}
-
 	}
 	m_size = bundle["size"].toString().toULong();
 	m_checksum = bundle["checksum"].toString();
@@ -79,15 +73,6 @@ if(entry.fullfilename[0].right(strlen("ATIIXP-MODEM.conf")) == "ATIIXP-MODEM.con
 		m_entries[i].next_offset = lastoffset;
 		lastoffset = m_entries[i].offset;
 	}
-/*
-QFile jsonfile(m_checksum + ".json");
-if(jsonfile.open(QIODevice::WriteOnly))
-{
-	QJson::Serializer serializer;
-	QByteArray jsondata = serializer.serialize(bundlevariant);
-	jsonfile.write(jsondata);
-	jsonfile.close();
-}*/
 }
 
 Bundle::~Bundle()
@@ -135,10 +120,6 @@ void Bundle::verifyFinished()
 		{
 			if(!*bundle_ok)
 			{
-/*
-m_cache_file.setFileName(m_checksum + ".bundle");
-m_cache_file.open(QIODevice::WriteOnly);
-*/
 				m_verification_state = bad;
 				download();
 				emit verifyDone(m_size);
@@ -169,16 +150,12 @@ void Bundle::download()
 		QFileInfo fileinfo(m_entries[0].fullfilename[i]);
 		fileinfo.absoluteDir().mkpath(".");
 
-		if(m_entries[0].fullfilename[i].right(strlen("ATIIXP-MODEM.conf")) == "ATIIXP-MODEM.conf")
-		{
-			qDebug() << "Here I am!";
-		}
-
 		QFile *entryfile = new QFile(m_entries[0].fullfilename[i]);
 		m_entry_file << entryfile;
 		if(!m_entry_file[i]->open(QIODevice::WriteOnly))
 		{
-			qFatal("Could not open file for writing.");
+			info.critical(tr("I/O error"), tr("Could not open file \"%1\" for writing.").arg(m_entries[0].fullfilename[i]));
+			exit(1);
 		}
 
 		if(m_entries[0].executable)
@@ -197,9 +174,9 @@ void Bundle::download()
 	// 16+MAX_WBITS means read as gzip.
 	if(inflateInit2(&m_gzipstream, 16 + MAX_WBITS) != Z_OK)
 	{
-		qFatal("Couldn't init zlibstream.");
+		info.critical("ZLib", tr("Couldn't init zlibstream."));
+		exit(1);
 	}
-
 
 	m_alreadyread = 0;
 	m_alreadydownloaded = 0;
@@ -227,23 +204,22 @@ void Bundle::nextFile()
 	}
 
 	if(m_current_entry_index >= m_entries.count())
-		qFatal("More files than expected!");
+	{
+		info.critical("I/O error", "More files than expected!");
+		exit(1);
+	}
 
 	for(int i = 0; i < m_entries[m_current_entry_index].fullfilename.count(); i++)
 	{
 		QFileInfo fileinfo(m_entries[m_current_entry_index].fullfilename[i]);
 		fileinfo.absoluteDir().mkpath(".");
 
-		if(m_entries[m_current_entry_index].fullfilename[i].right(strlen("ATIIXP-MODEM.conf")) == "ATIIXP-MODEM.conf")
-		{
-			qDebug() << "Here I am!";
-		}
-
 		QFile *entryfile = new QFile(m_entries[m_current_entry_index].fullfilename[i]);
 		m_entry_file << entryfile;
 		if(!m_entry_file[i]->open(QIODevice::WriteOnly))
 		{
-			qFatal("Could not open file for writing.");
+			info.critical(tr("I/O error"), tr("Could not open file \"%1\" for writing.").arg(m_entries[m_current_entry_index].fullfilename[i]));
+			exit(1);
 		}
 
 		if(m_entries[m_current_entry_index].executable)
@@ -261,7 +237,10 @@ void Bundle::nextFile()
 
 	// 16+MAX_WBITS means read as gzip.
 	if(inflateInit2(&m_gzipstream, 16 + MAX_WBITS) != Z_OK)
-		qFatal("Couldn't init zlibstream.");
+	{
+		info.critical("ZLib", tr("Couldn't init zlibstream."));
+		exit(1);
+	}
 }
 
 
@@ -275,15 +254,17 @@ void Bundle::downloadFinished()
 		if(reply->error())
 		{
 			QString error = reply->errorString();
-			qDebug() << error;
-			qFatal(error.toAscii());
+			info.critical(tr("Download error"), error);
+			exit(1);
 		}
 		else
 		{
 			QByteArray streamdata = reply->readAll();
-//m_cache_file.write(streamdata);
 			if(streamdata.count() != 0)
-				qFatal("Still data left!");
+			{
+				info.critical("Download error", "Still data left!");
+				exit(1);
+			}
 
 			emit done();
 		}
@@ -309,7 +290,6 @@ void Bundle::readyRead()
 				break;
 
 			QByteArray streamdata = reply->read(m_entries[m_current_entry_index].next_offset - m_alreadyread);
-//m_cache_file.write(streamdata);
 			if(streamdata.count() == 0)
 				break;
 
@@ -355,10 +335,8 @@ void Bundle::readyRead()
 					nextFile();
 				else if(inflate_status < 0)
 				{
-					qDebug() << streamdata.count();
-					qDebug() << m_checksum;
-					qDebug() << m_entries.count();
-					qFatal("Decompress error");
+					info.critical(tr("I/O error"), tr("Decompress error"));
+					exit(1);
 				}
 			}
 		}

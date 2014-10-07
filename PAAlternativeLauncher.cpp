@@ -387,9 +387,6 @@ void PAAlternativeLauncher::closeEvent(QCloseEvent* event)
 
 void PAAlternativeLauncher::downloadPushButtonClicked(bool)
 {
-//	m_patcher.test();
-//	return;
-
 	QSettings settings(QSettings::UserScope, "DeathByDenim", "PAAlternativeLauncher");
 	settings.setValue(m_streams_combo_box->currentText() + "/installpath", m_installPathLineEdit->text());
 	m_patcher.setInstallPath(m_installPathLineEdit->text());

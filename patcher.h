@@ -36,7 +36,6 @@ public:
     QStringList streamNames();
 	void downloadStream(const QString streamname);
 	void setInstallPath(QString installpath);
-	void test();
 
 private:
 	QWidget *m_parent;
