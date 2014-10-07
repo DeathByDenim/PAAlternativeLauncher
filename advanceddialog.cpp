@@ -3,9 +3,10 @@
 #include <QVBoxLayout>
 #include <QLineEdit>
 #include <QDialogButtonBox>
-#include <QCheckBox>
+#include <QGroupBox>
+#include <QRadioButton>
 
-AdvancedDialog::AdvancedDialog(const QString& extraparameters, const bool useoptirun, QWidget* parent)
+AdvancedDialog::AdvancedDialog(const QString& extraparameters, const AdvancedDialog::optimus_t useoptimus, QWidget* parent)
  : QDialog(parent)
 {
 	setWindowTitle("Advanced");
@@ -18,11 +19,30 @@ AdvancedDialog::AdvancedDialog(const QString& extraparameters, const bool useopt
 	m_parametersLineEdit->setText(extraparameters);
 	mainLayout->addWidget(m_parametersLineEdit);
 
-#ifdef linux
-	m_optirunCheckBox = new QCheckBox(tr("Use optirun (for NVidia optimus)"), this);
-	m_optirunCheckBox->setChecked(useoptirun);
-	mainLayout->addWidget(m_optirunCheckBox);
-#endif
+//#ifdef linux
+	m_optimusGroupBox = new QGroupBox(tr("NVidia Optimus"), this);
+	QVBoxLayout *optimusLayout = new QVBoxLayout(m_optimusGroupBox);
+	m_nooptimusRadioButton = new QRadioButton(tr("Don't use Optimus"), m_optimusGroupBox);
+	m_optirunRadioButton = new QRadioButton(tr("Use optirun"), m_optimusGroupBox);
+	m_primusrunRadioButton = new QRadioButton(tr("Use primusrun"), m_optimusGroupBox);
+	optimusLayout->addWidget(m_nooptimusRadioButton);
+	optimusLayout->addWidget(m_optirunRadioButton);
+	optimusLayout->addWidget(m_primusrunRadioButton);
+	switch(useoptimus)
+	{
+		case nooptimus:
+			m_nooptimusRadioButton->setChecked(true);
+			break;
+		case optirun:
+			m_optirunRadioButton->setChecked(true);
+			break;
+		case primusrun:
+			m_primusrunRadioButton->setChecked(true);
+			break;
+	}
+
+	mainLayout->addWidget(m_optimusGroupBox);
+//#endif
 
 	QLabel *availableParameters = new QLabel(this);
 	availableParameters->setText(
@@ -79,13 +99,16 @@ AdvancedDialog::~AdvancedDialog()
 
 }
 
-bool AdvancedDialog::useOptirun()
+AdvancedDialog::optimus_t AdvancedDialog::useOptimus()
 {
 #ifdef linux
-	return m_optirunCheckBox;
-#else
-	return true;
+	if(m_optirunRadioButton->isChecked())
+		return optirun;
+	else if(m_primusrunRadioButton->isChecked())
+		return primusrun;
 #endif
+
+	return nooptimus;
 }
 
 #include "advanceddialog.moc"

@@ -4,6 +4,7 @@
 #include <QMainWindow>
 #include <QList>
 #include "patcher.h"
+#include "advanceddialog.h"
 
 class QTextBrowser;
 class QProgressBar;
@@ -40,7 +41,7 @@ private:
     QLineEdit* m_installPathLineEdit;
 	QString m_extraParameters;
 	QMap<QString,QString> m_stream_news;
-	bool m_use_optirun;
+	AdvancedDialog::optimus_t m_use_optimus;
 
 	QWidget *createLoginWidget(QWidget* parent);
 	QWidget *createDownloadWidget(QWidget* parent);

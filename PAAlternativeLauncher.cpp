@@ -431,10 +431,18 @@ void PAAlternativeLauncher::launchPushButtonClicked(bool)
 #endif
 	;
 
-	if(m_use_optirun)
+	switch(m_use_optimus)
 	{
-		parameters << command;
-		command = "optirun";
+		case AdvancedDialog::optirun:
+			parameters << command;
+			command = "optirun";
+			break;
+		case AdvancedDialog::primusrun:
+			parameters << command;
+			command = "primusrun";
+			break;
+		default:
+			break;
 	}
 
 
@@ -454,13 +462,13 @@ void PAAlternativeLauncher::advancedPushButtonClicked(bool)
 {
 	QSettings settings(QSettings::UserScope, "DeathByDenim", "PAAlternativeLauncher");
 
-	AdvancedDialog *advanceddialog = new AdvancedDialog(m_extraParameters, m_use_optirun, this);
+	AdvancedDialog *advanceddialog = new AdvancedDialog(m_extraParameters, m_use_optimus, this);
 	if(advanceddialog->exec() == QDialog::Accepted)
 	{
 		m_extraParameters = advanceddialog->parameters();
-		m_use_optirun = advanceddialog->useOptirun();
+		m_use_optimus = advanceddialog->useOptimus();
 		settings.setValue(m_streams_combo_box->currentText() + "/extraparameters", m_extraParameters);
-		settings.setValue(m_streams_combo_box->currentText() + "/useoptirun", m_use_optirun);
+		settings.setValue(m_streams_combo_box->currentText() + "/useoptirun", (int)m_use_optimus);
 	}
 
 	delete advanceddialog;
@@ -470,7 +478,7 @@ void PAAlternativeLauncher::streamsCurrentIndexChanged(QString streamname)
 {
 	QSettings settings(QSettings::UserScope, "DeathByDenim", "PAAlternativeLauncher");
 	m_extraParameters = settings.value(streamname + "/extraparameters").toString();
-	m_use_optirun = settings.value(streamname + "/useoptirun").toBool();
+	m_use_optimus = (AdvancedDialog::optimus_t)settings.value(streamname + "/useoptirun").toInt();
 
 	m_installPathLineEdit->setText(settings.value(streamname + "/installpath").toString());
 
