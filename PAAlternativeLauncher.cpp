@@ -166,6 +166,7 @@ QWidget* PAAlternativeLauncher::createLoginWidget(QWidget *parent)
 
 	m_password_lineedit = new QLineEdit(mainWidget);
 	m_password_lineedit->setEchoMode(QLineEdit::Password);
+	connect(m_password_lineedit, SIGNAL(returnPressed()), SLOT(loginPushButtonClicked(true)));
 	mainLayout->addRow(tr("Password"), m_password_lineedit);
 
 	QPushButton *loginButton = new QPushButton(tr("Login"), mainWidget);
