@@ -36,7 +36,7 @@ PAAlternativeLauncher::PAAlternativeLauncher()
 #elif _WIN32
  , m_platform("Windows")
 #elif __APPLE__
- , m_platform("MacOS")
+ , m_platform("OSX")
 #else
 # error Not a valid os
 #endif
