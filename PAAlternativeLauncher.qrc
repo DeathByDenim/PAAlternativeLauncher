@@ -1,0 +1,9 @@
+<!DOCTYPE RCC><RCC version="1.0">
+	<qresource>
+		<file>img/img_bground_galaxy_01.png</file>
+		<file>img/img_imperial_invictus.png</file>
+		<file>img/loading.gif</file>
+		<file>img/img_pa_logo_start_rest.png</file>
+		<file>img/blackmage.png</file>
+	</qresource>
+</RCC>
