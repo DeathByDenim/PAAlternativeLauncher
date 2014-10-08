@@ -1,5 +1,5 @@
 #include <QtGui/QApplication>
-#include "PAAlternativeLauncher.h"
+#include "paalternativelauncher.h"
 #include "information.h"
 
 int main(int argc, char** argv)

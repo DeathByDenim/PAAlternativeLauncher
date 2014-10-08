@@ -1,6 +1,6 @@
 #define VERSION "0.2"
 
-#include "PAAlternativeLauncher.h"
+#include "paalternativelauncher.h"
 #include "advanceddialog.h"
 #include "information.h"
 
@@ -483,4 +483,4 @@ void PAAlternativeLauncher::streamsCurrentIndexChanged(QString streamname)
 	m_patch_text_browser->setHtml(m_stream_news[streamname]);
 }
 
-#include "PAAlternativeLauncher.moc"
+#include "paalternativelauncher.moc"
