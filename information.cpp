@@ -1,10 +1,11 @@
 #include <QMessageBox>
+#include <QDir>
 #include "information.h"
 
 Information::Information()
  : m_parent(NULL)
 {
-	m_logfile.setFileName("PAAlternativeLauncher.log");
+	m_logfile.setFileName(QDir::tempPath() + "/PAAlternativeLauncher.log");
 	if(!m_logfile.open(QIODevice::WriteOnly))
 		QMessageBox::warning(NULL, "Log error", "Couldn't open logfile for writing");
 }

@@ -18,7 +18,7 @@ public:
 	void setVerbose(bool verbose);
 	void critical(const QString& title, const QString& text);
 	void warning(const QString& title, const QString& text);
-	void log(const QString& title, const QString& text, bool verbose);
+	void log(const QString& title, const QString& text, bool verbose = false);
 
 private:
 	QWidget *m_parent;

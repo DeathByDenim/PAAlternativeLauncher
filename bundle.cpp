@@ -53,6 +53,7 @@ Bundle::Bundle(QString installpath, QVariant bundlevariant, QString downloadurl,
 				info.critical("File creation", "Could not create the file \"" + file.fileName() + "\"");
 			}
 			file.close();
+			info.log("Empty file creation", m_entries[i].fullfilename[0]);
 		}
 	}
 
@@ -123,6 +124,7 @@ void Bundle::verifyFinished()
 		{
 			if(!*bundle_ok)
 			{
+				info.log("Download required for", m_checksum);
 				m_verification_state = bad;
 				download();
 				emit verifyDone(m_size);
@@ -160,6 +162,7 @@ void Bundle::download()
 			info.critical(tr("I/O error"), tr("Could not open file \"%1\" for writing.").arg(m_entries[0].fullfilename[i]));
 			exit(1);
 		}
+		info.log("File creation", m_entries[0].fullfilename[i]);
 
 		if(m_entries[0].executable)
 			m_entry_file[i]->setPermissions(m_entry_file[i]->permissions() | QFile::ExeGroup | QFile::ExeOther | QFile::ExeOwner | QFile::ExeUser);
@@ -224,6 +227,7 @@ void Bundle::nextFile()
 			info.critical(tr("I/O error"), tr("Could not open file \"%1\" for writing.").arg(m_entries[m_current_entry_index].fullfilename[i]));
 			exit(1);
 		}
+		info.log("File creation", m_entries[m_current_entry_index].fullfilename[i]);
 
 		if(m_entries[m_current_entry_index].executable)
 			m_entry_file[i]->setPermissions(m_entry_file[i]->permissions() | QFile::ExeGroup | QFile::ExeOther | QFile::ExeOwner | QFile::ExeUser);
