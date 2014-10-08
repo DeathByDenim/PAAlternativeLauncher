@@ -43,6 +43,9 @@ Bundle::Bundle(QString installpath, QVariant bundlevariant, QString downloadurl,
 	{
 		if(m_entries[i].size == 0)
 		{
+			QFileInfo fileinfo(m_entries[i].fullfilename[0]);
+			fileinfo.absoluteDir().mkpath(".");
+
 			QFile file(m_entries[i].fullfilename[0]);
 			m_entries.removeAt(i);
 			if(!file.open(QIODevice::WriteOnly))
