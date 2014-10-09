@@ -1,4 +1,4 @@
-#define VERSION "0.2"
+#define VERSION "0.3"
 
 #include "paalternativelauncher.h"
 #include "advanceddialog.h"
@@ -138,6 +138,8 @@ PAAlternativeLauncher::PAAlternativeLauncher()
 		request.setAttribute(QNetworkRequest::User, QVariant("streams"));
 		m_network_access_manager->get(request);
 	}
+
+	m_username_lineedit->setFocus();
 }
 
 PAAlternativeLauncher::~PAAlternativeLauncher()
@@ -166,7 +168,7 @@ QWidget* PAAlternativeLauncher::createLoginWidget(QWidget *parent)
 
 	m_password_lineedit = new QLineEdit(mainWidget);
 	m_password_lineedit->setEchoMode(QLineEdit::Password);
-	connect(m_password_lineedit, SIGNAL(returnPressed()), SLOT(loginPushButtonClicked(true)));
+	connect(m_password_lineedit, SIGNAL(returnPressed()), SLOT(lineEditReturnPressed()));
 	mainLayout->addRow(tr("Password"), m_password_lineedit);
 
 	QPushButton *loginButton = new QPushButton(tr("Login"), mainWidget);
@@ -271,6 +273,11 @@ void PAAlternativeLauncher::loginPushButtonClicked(bool)
 	m_network_access_manager->post(request, data.toUtf8());
 }
 
+void PAAlternativeLauncher::lineEditReturnPressed()
+{
+	loginPushButtonClicked(true);
+}
+
 void PAAlternativeLauncher::replyReceived(QNetworkReply* reply)
 {
 	if(reply->error() != QNetworkReply::NoError)
@@ -281,6 +288,7 @@ void PAAlternativeLauncher::replyReceived(QNetworkReply* reply)
 			m_login_widget->setVisible(true);
 			m_download_widget->setVisible(false);
 			m_wait_widget->setVisible(false);
+			m_username_lineedit->setFocus(Qt::TabFocusReason);
 			info.log(tr("Communication error"), tr("session ticket expired."), false);
 		}
 		else
@@ -384,6 +392,13 @@ void PAAlternativeLauncher::closeEvent(QCloseEvent* event)
 	settings.setValue("mainwindow/geometry", saveGeometry());
 
 	QWidget::closeEvent(event);
+}
+
+void PAAlternativeLauncher::showEvent(QShowEvent* event)
+{
+	m_username_lineedit->setFocus(Qt::TabFocusReason);
+
+	QWidget::showEvent(event);
 }
 
 void PAAlternativeLauncher::downloadPushButtonClicked(bool)

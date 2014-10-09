@@ -45,6 +45,7 @@ Bundle::Bundle(QString installpath, QVariant bundlevariant, QString downloadurl,
 		{
 			QFileInfo fileinfo(m_entries[i].fullfilename[0]);
 			fileinfo.absoluteDir().mkpath(".");
+			info.log("Empty file creation", m_entries[i].fullfilename[0]);
 
 			QFile file(m_entries[i].fullfilename[0]);
 			m_entries.removeAt(i);
@@ -53,7 +54,6 @@ Bundle::Bundle(QString installpath, QVariant bundlevariant, QString downloadurl,
 				info.critical("File creation", "Could not create the file \"" + file.fileName() + "\"");
 			}
 			file.close();
-			info.log("Empty file creation", m_entries[i].fullfilename[0]);
 		}
 	}
 

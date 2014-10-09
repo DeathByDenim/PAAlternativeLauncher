@@ -6,6 +6,7 @@
 #include "patcher.h"
 #include "advanceddialog.h"
 
+class QShowEvent;
 class QTextBrowser;
 class QProgressBar;
 class QCheckBox;
@@ -50,6 +51,7 @@ private:
 
 protected:
 	void closeEvent(QCloseEvent *event);
+	void showEvent(QShowEvent *event);
 
 private slots:
 	void loginPushButtonClicked(bool);
@@ -61,6 +63,7 @@ private slots:
 	void patcherProgress(int percentage);
 	void patcherState(QString state);
 	void streamsCurrentIndexChanged(QString streamname);
+    void lineEditReturnPressed();
 };
 
 #endif // PAAlternativeLauncher_H
