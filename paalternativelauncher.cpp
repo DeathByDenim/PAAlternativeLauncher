@@ -21,6 +21,7 @@
 #include <QDialogButtonBox>
 #include <QFileDialog>
 #include <QTextBrowser>
+#include <QMessageBox>
 #include <QNetworkAccessManager>
 #include <QNetworkRequest>
 #include <QNetworkReply>
@@ -188,10 +189,16 @@ QWidget* PAAlternativeLauncher::createDownloadWidget(QWidget* parent)
 	mainWidget->setLayout(mainLayout);
 
 	QWidget *streamWidget = new QWidget(mainWidget);
-	QFormLayout *streamLayout = new QFormLayout(streamWidget);
+	QHBoxLayout *streamLayout = new QHBoxLayout(streamWidget);
+	QLabel *streamsLabel = new QLabel(tr("Stream"), streamWidget);
+	streamLayout->addWidget(streamsLabel);
 	m_streams_combo_box = new QComboBox(streamWidget);
-	streamLayout->addRow(tr("Stream"), m_streams_combo_box);
+	streamLayout->addWidget(m_streams_combo_box);
 	connect(m_streams_combo_box, SIGNAL(currentIndexChanged(QString)), SLOT(streamsCurrentIndexChanged(QString)));
+	streamLayout->addStretch();
+	m_update_available_label = new QLabel("", streamWidget);
+	m_update_available_label->setStyleSheet("QLabel {font-weight: bold; color: white}");
+	streamLayout->addWidget(m_update_available_label);
 	mainLayout->addWidget(streamWidget);
 
 	m_patch_text_browser = new QTextBrowser(mainWidget);
@@ -342,6 +349,7 @@ void PAAlternativeLauncher::replyReceived(QNetworkReply* reply)
 				request.setAttribute((QNetworkRequest::Attribute)(QNetworkRequest::User+1), QString(*streamname));
 				m_network_access_manager->get(request);
 			}
+			checkForUpdates(streamnames);
 		}
 		else if(type == "streamnews")
 		{
@@ -432,6 +440,12 @@ void PAAlternativeLauncher::launchPushButtonClicked(bool)
 {
 	QString command;
 	QStringList parameters;
+	
+	if(m_requires_update[m_streams_combo_box->currentText()])
+	{
+		if(QMessageBox::warning(this, tr("Update required"), tr("There is an update available for this stream.\nPlanetary Annihilation will not work on-line.\nContinue anyway?"), QMessageBox::Yes | QMessageBox::No) == QMessageBox::No)
+			return;
+	}
 
 	command =
 		m_installPathLineEdit->text() +
@@ -496,6 +510,33 @@ void PAAlternativeLauncher::streamsCurrentIndexChanged(QString streamname)
 	m_installPathLineEdit->setText(settings.value(streamname + "/installpath").toString());
 
 	m_patch_text_browser->setHtml(m_stream_news[streamname]);
+	
+	if(m_requires_update[streamname])
+		m_update_available_label->setText(tr("Update available!"));
+	else
+		m_update_available_label->setText("");
+}
+
+void PAAlternativeLauncher::checkForUpdates(QStringList streamnames)
+{
+	QSettings settings(QSettings::UserScope, "DeathByDenim", "PAAlternativeLauncher");
+	for(QStringList::const_iterator streamname = streamnames.constBegin(); streamname != streamnames.constEnd(); ++streamname)
+	{
+		QString installpath = settings.value(*streamname + "/installpath").toString();
+		QFile buildidfile(installpath + "/buildid.txt");
+		if(!buildidfile.open(QIODevice::ReadOnly))
+		{
+			m_requires_update[*streamname] = true;
+			break;
+		}
+		QByteArray buildidbytearray = buildidfile.readLine();
+		m_requires_update[*streamname] = (buildidbytearray.mid(8).trimmed() != m_patcher.buildId(*streamname));
+		
+		if(m_requires_update[m_streams_combo_box->currentText()])
+			m_update_available_label->setText(tr("Update available!"));
+		else
+			m_update_available_label->setText("");
+	}
 }
 
 #include "paalternativelauncher.moc"

@@ -42,12 +42,15 @@ private:
     QLineEdit* m_installPathLineEdit;
 	QString m_extraParameters;
 	QMap<QString,QString> m_stream_news;
+	QMap<QString,bool> m_requires_update;
 	AdvancedDialog::optimus_t m_use_optimus;
+    QLabel* m_update_available_label;
 
 	QWidget *createLoginWidget(QWidget* parent);
 	QWidget *createDownloadWidget(QWidget* parent);
 	QWidget *createWaitWidget(QWidget *parent);
 	QString decodeLoginData(const QByteArray& data);
+    void checkForUpdates(QStringList streamnames);
 
 protected:
 	void closeEvent(QCloseEvent *event);

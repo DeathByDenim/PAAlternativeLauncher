@@ -58,6 +58,19 @@ void Patcher::decodeStreamsData(QByteArray data)
 	}
 }
 
+QString Patcher::buildId(QString streamname)
+{
+	for(QList<Stream>::const_iterator stream = m_streams.constBegin(); stream != m_streams.constEnd(); ++stream)
+	{
+		if(streamname == stream->StreamName)
+		{
+			return stream->BuildId;
+		}
+	}
+	
+	return QString();
+}
+
 QStringList Patcher::streamNames()
 {
 	QStringList result;
