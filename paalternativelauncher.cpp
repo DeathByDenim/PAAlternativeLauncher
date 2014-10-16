@@ -479,7 +479,7 @@ void PAAlternativeLauncher::launchPushButtonClicked(bool)
 #ifdef linux
 		"/PA"
 #elif _WIN32
-		"/x64/PA.exe"
+		"\\bin_x64\\PA.exe"
 #elif __APPLE__
 #	error Right...
 #endif
