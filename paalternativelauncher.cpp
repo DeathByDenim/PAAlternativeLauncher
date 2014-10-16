@@ -46,7 +46,7 @@ PAAlternativeLauncher::PAAlternativeLauncher()
 #endif
  , m_download_button(NULL)
 {
-	setWindowIcon(QIcon(":/img/blackmage.png"));
+	setWindowIcon(QIcon(":/img/icon.png"));
 	setWindowTitle("PA Alternative Launcher");
 	info.setParent(this);
 
@@ -113,7 +113,7 @@ PAAlternativeLauncher::PAAlternativeLauncher()
 	createdByLabel->setStyleSheet("QLabel {color: white}");
 	aboutLayout->addWidget(createdByLabel);
 	QLabel *blackmageLabel = new QLabel(aboutWidget);
-	blackmageLabel->setPixmap(QPixmap(":img/blackmage.png").scaled(16, 16));
+	blackmageLabel->setPixmap(QPixmap(":img/blackmage.png"));
 	blackmageLabel->setMaximumSize(16, 16);
 	aboutLayout->addWidget(blackmageLabel);
 	aboutLayout->addStretch();
