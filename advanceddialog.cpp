@@ -19,7 +19,7 @@ AdvancedDialog::AdvancedDialog(const QString& extraparameters, const AdvancedDia
 	m_parametersLineEdit->setText(extraparameters);
 	mainLayout->addWidget(m_parametersLineEdit);
 
-//#ifdef linux
+#ifdef linux
 	m_optimusGroupBox = new QGroupBox(tr("NVidia Optimus"), this);
 	QVBoxLayout *optimusLayout = new QVBoxLayout(m_optimusGroupBox);
 	m_nooptimusRadioButton = new QRadioButton(tr("Don't use Optimus"), m_optimusGroupBox);
@@ -42,7 +42,7 @@ AdvancedDialog::AdvancedDialog(const QString& extraparameters, const AdvancedDia
 	}
 
 	mainLayout->addWidget(m_optimusGroupBox);
-//#endif
+#endif
 
 	QLabel *availableParameters = new QLabel(this);
 	availableParameters->setText(

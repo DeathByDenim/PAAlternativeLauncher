@@ -27,6 +27,9 @@
 #include <QNetworkReply>
 #include <QSettings>
 #include <QProcess>
+#ifdef _WIN32
+#  define QJSON_STATIC
+#endif
 #include <qjson/parser.h>
 
 PAAlternativeLauncher::PAAlternativeLauncher()
@@ -41,6 +44,7 @@ PAAlternativeLauncher::PAAlternativeLauncher()
 #else
 # error Not a valid os
 #endif
+ , m_download_button(NULL)
 {
 	setWindowIcon(QIcon(":/img/blackmage.png"));
 	setWindowTitle("PA Alternative Launcher");
@@ -140,7 +144,10 @@ PAAlternativeLauncher::PAAlternativeLauncher()
 		m_network_access_manager->get(request);
 	}
 
-	m_username_lineedit->setFocus();
+	if(m_username_lineedit->text().isEmpty())
+		m_username_lineedit->setFocus();
+	else
+		m_password_lineedit->setFocus();
 }
 
 PAAlternativeLauncher::~PAAlternativeLauncher()
@@ -175,6 +182,9 @@ QWidget* PAAlternativeLauncher::createLoginWidget(QWidget *parent)
 	QPushButton *loginButton = new QPushButton(tr("Login"), mainWidget);
 	mainLayout->addRow(loginButton);
 	connect(loginButton, SIGNAL(clicked(bool)), SLOT(loginPushButtonClicked(bool)));
+
+	QSettings settings(QSettings::UserScope, "DeathByDenim", "PAAlternativeLauncher");
+	m_username_lineedit->setText(settings.value("login/username").toString());
 
 	return mainWidget;
 }
@@ -223,9 +233,9 @@ QWidget* PAAlternativeLauncher::createDownloadWidget(QWidget* parent)
 	QPushButton *advancedButton = new QPushButton(tr("&Advanced"), buttonbox);
 	connect(advancedButton, SIGNAL(clicked(bool)), SLOT(advancedPushButtonClicked(bool)));
 	buttonbox->addButton(advancedButton, QDialogButtonBox::NoRole);
-	QPushButton *downloadButton = new QPushButton(tr("&Download and install"), buttonbox);
-	connect(downloadButton, SIGNAL(clicked(bool)), SLOT(downloadPushButtonClicked(bool)));
-	buttonbox->addButton(downloadButton, QDialogButtonBox::NoRole);
+	m_download_button = new QPushButton(tr("&Download and install"), buttonbox);
+	connect(m_download_button, SIGNAL(clicked(bool)), SLOT(downloadPushButtonClicked(bool)));
+	buttonbox->addButton(m_download_button, QDialogButtonBox::NoRole);
 
 	mainLayout->addWidget(buttonbox);
 
@@ -295,12 +305,16 @@ void PAAlternativeLauncher::replyReceived(QNetworkReply* reply)
 			m_login_widget->setVisible(true);
 			m_download_widget->setVisible(false);
 			m_wait_widget->setVisible(false);
-			m_username_lineedit->setFocus(Qt::TabFocusReason);
+			if(m_username_lineedit->text().isEmpty())
+				m_username_lineedit->setFocus(Qt::TabFocusReason);
+			else
+				m_password_lineedit->setFocus(Qt::TabFocusReason);
+
 			info.log(tr("Communication error"), tr("session ticket expired."), false);
 		}
 		else
 		{
-			info.critical(tr("Communication error"), "Error while doing " + type + ". Details: " + reply->errorString() + ".");
+			info.critical(tr("Communication error"), "Error while handling " + type + ". Details: " + reply->errorString() + ".");
 			m_login_widget->setVisible(true);
 			m_download_widget->setVisible(false);
 			m_wait_widget->setVisible(false);
@@ -398,19 +412,25 @@ void PAAlternativeLauncher::closeEvent(QCloseEvent* event)
 {
 	QSettings settings(QSettings::UserScope, "DeathByDenim", "PAAlternativeLauncher");
 	settings.setValue("mainwindow/geometry", saveGeometry());
+	settings.setValue("login/username", m_username_lineedit->text());
 
 	QWidget::closeEvent(event);
 }
 
 void PAAlternativeLauncher::showEvent(QShowEvent* event)
 {
-	m_username_lineedit->setFocus(Qt::TabFocusReason);
+	if(m_username_lineedit->text().isEmpty())
+		m_username_lineedit->setFocus(Qt::TabFocusReason);
+	else
+		m_password_lineedit->setFocus(Qt::TabFocusReason);
 
 	QWidget::showEvent(event);
 }
 
 void PAAlternativeLauncher::downloadPushButtonClicked(bool)
 {
+	m_download_button->setEnabled(false);
+
 	QSettings settings(QSettings::UserScope, "DeathByDenim", "PAAlternativeLauncher");
 	settings.setValue(m_streams_combo_box->currentText() + "/installpath", m_installPathLineEdit->text());
 	m_patcher.setInstallPath(m_installPathLineEdit->text());
@@ -427,6 +447,13 @@ void PAAlternativeLauncher::patcherState(QString state)
 {
 	if(m_patch_label)
 		m_patch_label->setText(state);
+
+	if(state == "Done")
+	{
+		m_download_button->setEnabled(true);
+		m_requires_update[m_streams_combo_box->currentText()] = false;
+		m_update_available_label->setText("");
+	}
 }
 
 void PAAlternativeLauncher::installPathButtonClicked(bool)

@@ -45,6 +45,7 @@ private:
 	QMap<QString,bool> m_requires_update;
 	AdvancedDialog::optimus_t m_use_optimus;
     QLabel* m_update_available_label;
+    QPushButton* m_download_button;
 
 	QWidget *createLoginWidget(QWidget* parent);
 	QWidget *createDownloadWidget(QWidget* parent);

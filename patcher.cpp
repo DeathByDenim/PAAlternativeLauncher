@@ -5,6 +5,9 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <zlib.h>
+#ifdef _WIN32
+#  define QJSON_STATIC
+#endif
 #include <qjson/parser.h>
 #include <QDir>
 #include <QtConcurrentMap>
@@ -17,6 +20,7 @@ Patcher::Patcher(QWidget* parent)
  : m_parent(parent)
  , m_buffer_increment(8*1024)
  , m_manifest_bytearray(m_buffer_increment, Qt::Uninitialized)
+ , m_error_occured(false)
 {
 	m_access_manager = new QNetworkAccessManager(this);
 }
@@ -95,6 +99,8 @@ void Patcher::downloadStream(const QString streamname)
 
 void Patcher::downloadManifest(const Patcher::Stream &stream)
 {
+	m_error_occured = false;
+
 	m_current_stream = stream;
 
 	m_manifest_zstream.zalloc = Z_NULL;
@@ -106,10 +112,15 @@ void Patcher::downloadManifest(const Patcher::Stream &stream)
 	m_manifest_zstream.avail_out = m_manifest_bytearray.count();
 
 	// 16+MAX_WBITS means read as gzip.
+#ifdef _WIN32
 	if(inflateInit2(&m_manifest_zstream, 16 + MAX_WBITS) != Z_OK)
+#else
+	if(inflateInit2(&m_manifest_zstream, 16 + MAX_WBITS) != Z_OK)
+#endif
 	{
+		m_error_occured = true;
 		info.critical("ZLib", tr("Couldn't init zlibstream."));
-		exit(1);
+		return;
 	}
 
 	QUrl manifesturl(stream.DownloadUrl + '/' + stream.TitleFolder + '/' + stream.ManifestName + stream.AuthSuffix);
@@ -123,6 +134,9 @@ void Patcher::downloadManifest(const Patcher::Stream &stream)
 
 void Patcher::manifestReadyRead()
 {
+	if(m_error_occured)
+		return;
+
 	QNetworkReply *reply = dynamic_cast<QNetworkReply *>(sender());
 	if(reply)
 	{
@@ -146,20 +160,28 @@ void Patcher::manifestReadyRead()
 
 		if(inflate_status < 0)
 		{
-			info.critical(tr("I/O error"), tr("Decompress error"));
-			exit(1);
+			m_error_occured = true;
+			emit state("Done");
+			reply->abort();
+			info.critical(tr("I/O error"), tr("Decompress error") + QString(" (1) (%1)").arg(inflate_status));
+			return;
 		}
 	}
 }
 
 void Patcher::manifestFinished()
 {
+	if(m_error_occured)
+		return;
+
 	QNetworkReply *reply = dynamic_cast<QNetworkReply *>(sender());
 	if(!reply)
 		return;
 
 	if(reply->error() != QNetworkReply::NoError)
 	{
+		m_error_occured = true;
+		emit state("Done");
 		info.critical(QString("Communication error"), "Error while downloading manifest.\nDetails: " + reply->errorString() + ".");
 	}
 	else
@@ -172,8 +194,9 @@ void Patcher::manifestFinished()
 
 		if(inflate_status != Z_STREAM_END)
 		{
-			info.critical(tr("I/O error"), tr("Decompress error"));
-			exit(1);
+			m_error_occured = true;
+			emit state("Done");
+			info.critical(tr("I/O error"), tr("Decompress error") + " (2)");
 		}
 		else
 			verify();
