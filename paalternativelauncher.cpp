@@ -27,6 +27,7 @@
 #include <QNetworkReply>
 #include <QSettings>
 #include <QProcess>
+#include <QDate>
 #if defined(linux) || defined(__APPLE__)
 #  include <sys/statvfs.h>
 #  include <sys/errno.h>
@@ -40,20 +41,21 @@
 PAAlternativeLauncher::PAAlternativeLauncher()
  : m_network_access_manager(new QNetworkAccessManager(this))
  , m_patcher(this)
-#ifdef linux
+#if defined(linux)
  , m_platform("Linux")
-#elif _WIN32
+#elif defined(_WIN32)
  , m_platform("Windows")
-#elif __APPLE__
+#elif defined(__APPLE__)
  , m_platform("OSX")
 #else
-# error Not a valid os
+# error Not a supported os
 #endif
  , m_download_button(NULL)
 {
 	setWindowIcon(QIcon(":/img/icon.png"));
 	setWindowTitle("PA Alternative Launcher");
 	info.setParent(this);
+	info.log("Starting launcher", QDateTime::currentDateTime().toString());
 
 	QPalette* palette = new QPalette();
  	palette->setBrush(QPalette::Background,*(new QBrush(*(new QPixmap(":/img/img_bground_galaxy_01.png")))));

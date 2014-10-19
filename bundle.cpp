@@ -234,8 +234,11 @@ void Bundle::nextFile(QNetworkReply* reply)
 		m_entry_file << entryfile;
 		if(!m_entry_file[i]->open(QIODevice::WriteOnly))
 		{
+			m_error_occured = true;
+			emit errorOccurred();
+			reply->abort();
 			info.critical(tr("I/O error"), tr("Could not open file \"%1\" for writing.").arg(m_entries[m_current_entry_index].fullfilename[i]));
-			exit(1);
+			return;
 		}
 		info.log("File creation", m_entries[m_current_entry_index].fullfilename[i]);
 
@@ -273,17 +276,21 @@ void Bundle::downloadFinished()
 
 		if(reply->error())
 		{
+			m_error_occured = true;
+			emit errorOccurred();
 			QString error = reply->errorString();
 			info.critical(tr("Download error"), error);
-			exit(1);
+			return;
 		}
 		else
 		{
 			QByteArray streamdata = reply->readAll();
 			if(streamdata.count() != 0)
 			{
+				m_error_occured = true;
+				emit errorOccurred();
 				info.critical("Download error", "Still data left!");
-				exit(1);
+				return;
 			}
 
 			emit done();
@@ -307,6 +314,7 @@ void Bundle::readyRead()
 	QNetworkReply *reply = dynamic_cast<QNetworkReply *>(sender());
 	if(reply)
 	{
+		info.log(tr("Data received"), tr("%1 bytes").arg(reply->bytesAvailable()), true);
 		do
 		{
 			if(m_current_entry_index >= m_entries.count())
