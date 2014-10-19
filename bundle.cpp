@@ -13,7 +13,7 @@
 #include "information.h"
 
 Bundle::Bundle(QString installpath, QVariant bundlevariant, QString downloadurl, QString titlefolder, QString authsuffix, QNetworkAccessManager *networkaccessmanager, QWidget *parent)
- : m_parent(parent), m_verification_state(unknown)
+ : m_parent(parent), m_verification_state(unknown), m_error_occured(false)
 {
 	m_network_access_manager = networkaccessmanager;
 
@@ -159,8 +159,10 @@ void Bundle::download()
 		m_entry_file << entryfile;
 		if(!m_entry_file[i]->open(QIODevice::WriteOnly))
 		{
+			m_error_occured = true;
 			info.critical(tr("I/O error"), tr("Could not open file \"%1\" for writing.").arg(m_entries[0].fullfilename[i]));
-			exit(1);
+			emit errorOccurred();
+			return;
 		}
 		info.log("File creation", m_entries[0].fullfilename[i]);
 
@@ -180,8 +182,10 @@ void Bundle::download()
 	// 16+MAX_WBITS means read as gzip.
 	if(inflateInit2(&m_gzipstream, 16 + MAX_WBITS) != Z_OK)
 	{
+		m_error_occured = true;
+		emit errorOccurred();
 		info.critical("ZLib", tr("Couldn't init zlibstream."));
-		exit(1);
+		return;
 	}
 
 	m_alreadyread = 0;
@@ -193,7 +197,7 @@ void Bundle::download()
 	connect(reply, SIGNAL(readyRead()), SLOT(readyRead()));
 }
 
-void Bundle::nextFile()
+void Bundle::nextFile(QNetworkReply* reply)
 {
 	for(int i = 0; i < m_entry_file.count(); i++)
 	{
@@ -202,6 +206,9 @@ void Bundle::nextFile()
 	}
 	m_entry_file.clear();
 
+	info.log("Next file", QString("%1:%2").arg(m_checksum).arg(m_current_entry_index+1), true);
+
+	
 	m_current_entry_index++;
 	if(m_current_entry_index == m_entries.count())
 	{
@@ -211,8 +218,11 @@ void Bundle::nextFile()
 
 	if(m_current_entry_index >= m_entries.count())
 	{
+		m_error_occured = true;
+		emit errorOccurred();
+		reply->abort();
 		info.critical("I/O error", "More files than expected!");
-		exit(1);
+		return;
 	}
 
 	for(int i = 0; i < m_entries[m_current_entry_index].fullfilename.count(); i++)
@@ -245,8 +255,11 @@ void Bundle::nextFile()
 	// 16+MAX_WBITS means read as gzip.
 	if(inflateInit2(&m_gzipstream, 16 + MAX_WBITS) != Z_OK)
 	{
+		m_error_occured = true;
+		emit errorOccurred();
+		reply->abort();
 		info.critical("ZLib", tr("Couldn't init zlibstream."));
-		exit(1);
+		return;
 	}
 }
 
@@ -288,7 +301,10 @@ void Bundle::downloadProgress(qint64 value, qint64)
 
 void Bundle::readyRead()
 {
-	QIODevice *reply = dynamic_cast<QIODevice *>(sender());
+	if(m_error_occured)
+		return;
+
+	QNetworkReply *reply = dynamic_cast<QNetworkReply *>(sender());
 	if(reply)
 	{
 		do
@@ -306,11 +322,22 @@ void Bundle::readyRead()
 			if(m_entries[m_current_entry_index].checksumZ == "")
 			{
 				for(QList<QFile *>::iterator entryfile = m_entry_file.begin(); entryfile != m_entry_file.end(); ++entryfile)
-					(*entryfile)->write(streamdata);
+				{
+					qint64 really_written = (*entryfile)->write(streamdata);
+					if(really_written == -1)
+					{
+						m_error_occured = true;
+						emit errorOccurred();
+						reply->abort();
+						info.critical(tr("Write error"), tr("Error while writing to %1 (%2).").arg((*entryfile)->fileName()).arg((*entryfile)->errorString()));
+						return;
+					}
+				}
+				info.log(tr("Writing to file"), QString("(1) ") + tr("%1 bytes written to %2.").arg(streamdata.count()).arg(m_entry_file[0]->fileName()), true);
 				m_alreadyread += streamdata.count();
 
 				if(m_alreadyread == m_entries[m_current_entry_index].next_offset)
-					nextFile();
+					nextFile(reply);
 			}
 			else
 			{
@@ -326,7 +353,18 @@ void Bundle::readyRead()
 					if(m_gzipstream.avail_out == 0)
 					{
 						for(QList<QFile *>::iterator entryfile = m_entry_file.begin(); entryfile != m_entry_file.end(); ++entryfile)
-							(*entryfile)->write(outputdata);
+						{
+							qint64 really_written = (*entryfile)->write(outputdata);
+							if(really_written == -1)
+							{
+								m_error_occured = true;
+								emit errorOccurred();
+								reply->abort();
+								info.critical(tr("Write error"), tr("Error while writing to %1 (%2).").arg((*entryfile)->fileName()).arg((*entryfile)->errorString()));
+								return;
+							}
+						}
+						info.log("Writing to file", QString("(2) %1 bytes written to %2.").arg(outputdata.count()).arg(m_entry_file[0]->fileName()), true);
 						m_gzipstream.next_out = (Bytef *)outputdata.data();
 						m_gzipstream.avail_out = outputdata.count();
 					}
@@ -335,15 +373,29 @@ void Bundle::readyRead()
 
 				outputdata.truncate(outputdata.count()-m_gzipstream.avail_out);
 				for(QList<QFile *>::iterator entryfile = m_entry_file.begin(); entryfile != m_entry_file.end(); ++entryfile)
-					(*entryfile)->write(outputdata);
+				{
+					qint64 really_written = (*entryfile)->write(outputdata);
+					if(really_written == -1)
+					{
+						m_error_occured = true;
+						emit errorOccurred();
+						reply->abort();
+						info.critical(tr("Write error"), tr("Error while writing to %1 (%2).").arg((*entryfile)->fileName()).arg((*entryfile)->errorString()));
+						return;
+					}
+				}
+				info.log("Writing to file", QString("(3) %1 bytes written to %2.").arg(outputdata.count()).arg(m_entry_file[0]->fileName()), true);
 				m_alreadyread += streamdata.count();
 
 				if(inflate_status == Z_STREAM_END)
-					nextFile();
+					nextFile(reply);
 				else if(inflate_status < 0)
 				{
+					m_error_occured = true;
+					emit errorOccurred();
+					reply->abort();
 					info.critical(tr("I/O error"), tr("Decompress error"));
-					exit(1);
+					return;
 				}
 			}
 		}

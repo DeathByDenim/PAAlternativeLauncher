@@ -1,4 +1,4 @@
-#define VERSION "0.3"
+#define VERSION "0.3.1"
 
 #include "paalternativelauncher.h"
 #include "advanceddialog.h"
@@ -27,10 +27,15 @@
 #include <QNetworkReply>
 #include <QSettings>
 #include <QProcess>
-#ifdef _WIN32
+#if defined(linux) || defined(__APPLE__)
+#  include <sys/statvfs.h>
+#  include <sys/errno.h>
+#elif defined(_WIN32)
+#  include <windows.h>
 #  define QJSON_STATIC
 #endif
 #include <qjson/parser.h>
+#include <climits>
 
 PAAlternativeLauncher::PAAlternativeLauncher()
  : m_network_access_manager(new QNetworkAccessManager(this))
@@ -429,6 +434,13 @@ void PAAlternativeLauncher::showEvent(QShowEvent* event)
 
 void PAAlternativeLauncher::downloadPushButtonClicked(bool)
 {
+	quint64 freespace = getFreeDiskspaceInMB(m_installPathLineEdit->text());
+	if(freespace < 1024)
+	{
+		if(!info.warning(tr("Available disk space"), tr("Only %1 MB available. Continue anyway?").arg(freespace)))
+			return;
+	}
+
 	m_download_button->setEnabled(false);
 
 	QSettings settings(QSettings::UserScope, "DeathByDenim", "PAAlternativeLauncher");
@@ -480,6 +492,7 @@ void PAAlternativeLauncher::launchPushButtonClicked(bool)
 		"/PA"
 #elif _WIN32
 		"\\bin_x64\\PA.exe"
+// or:	"\\bin_x86\\PA.exe"
 #elif __APPLE__
 #	error Right...
 #endif
@@ -564,6 +577,29 @@ void PAAlternativeLauncher::checkForUpdates(QStringList streamnames)
 		else
 			m_update_available_label->setText("");
 	}
+}
+
+quint64 PAAlternativeLauncher::getFreeDiskspaceInMB(QString directory)
+{
+	QByteArray dir = directory.toLatin1();
+#if defined(linux) || defined(__APPLE__)
+	struct statvfs diskinfo;
+	int rc = statvfs(dir.constData(), &diskinfo);
+	if(rc != 0)
+	{
+		info.log(tr("Disk space"), QString("could not be determined (%1)").arg(errno));
+		return ULONG_MAX;
+	}
+	return (diskinfo.f_bavail / 1024) * (diskinfo.f_bsize / 1024);
+#elif defined(_WIN32)
+	ULARGE_INTEGER FreeBytesAvailable, TotalNumberOfBytes, TotalNumberOfFreeBytes;
+	if(GetDiskFreeSpaceEx(dir.constData(), &FreeBytesAvailable, &TotalNumberOfBytes, &TotalNumberOfFreeBytes))
+	{
+		return FreeBytesAvailable.QuadPart / (1024*1024);
+	}
+#endif
+
+	return ULONG_MAX;
 }
 
 #include "paalternativelauncher.moc"

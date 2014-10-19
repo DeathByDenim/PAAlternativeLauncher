@@ -52,6 +52,7 @@ private:
 	QWidget *createWaitWidget(QWidget *parent);
 	QString decodeLoginData(const QByteArray& data);
     void checkForUpdates(QStringList streamnames);
+	quint64 getFreeDiskspaceInMB(QString directory);
 
 protected:
 	void closeEvent(QCloseEvent *event);

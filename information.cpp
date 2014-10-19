@@ -33,16 +33,18 @@ void Information::critical(const QString& title, const QString& text)
 	m_logfile.write(" ", 1);
 	m_logfile.write(text.toUtf8());
 	m_logfile.write("\n", 1);
+	m_logfile.flush();
 }
 
-void Information::warning(const QString& title, const QString& text)
+bool Information::warning(const QString& title, const QString& text)
 {
-	QMessageBox::warning(m_parent, title, text);
 	m_logfile.write("[WARN]  ", 8);
 	m_logfile.write(title.toUtf8());
 	m_logfile.write(" ", 1);
 	m_logfile.write(text.toUtf8());
 	m_logfile.write("\n", 1);
+	m_logfile.flush();
+	return(QMessageBox::warning(m_parent, title, text, QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes);
 }
 
 void Information::log(const QString& title, const QString& text, bool verbose)
@@ -55,6 +57,7 @@ void Information::log(const QString& title, const QString& text, bool verbose)
 	m_logfile.write(" ", 1);
 	m_logfile.write(text.toUtf8());
 	m_logfile.write("\n", 1);
+	m_logfile.flush();
 }
 
 Information info;

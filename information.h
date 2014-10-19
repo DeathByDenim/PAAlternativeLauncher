@@ -17,7 +17,7 @@ public:
 	void setParent(QWidget *parent);
 	void setVerbose(bool verbose);
 	void critical(const QString& title, const QString& text);
-	void warning(const QString& title, const QString& text);
+	bool warning(const QString& title, const QString& text);
 	void log(const QString& title, const QString& text, bool verbose = false);
 
 private:

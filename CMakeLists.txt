@@ -10,11 +10,23 @@ include_directories(${QT_INCLUDES} ${CMAKE_CURRENT_BINARY_DIR} ${ZLIB_INCLUDE_DI
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 
 set(paalternativelauncher_SRCS information.cpp advanceddialog.cpp bundle.cpp sha1.cpp patcher.cpp paalternativelauncher.cpp main.cpp)
+
+set(RES_FILES "")
+if(WIN32)
+	if(MINGW)
+		set(RES_FILES "paalternativelauncher.rc")
+		set(CMAKE_RC_COMPILER_INIT windres)
+		ENABLE_LANGUAGE(RC)
+		SET(CMAKE_RC_COMPILE_OBJECT
+		"<CMAKE_RC_COMPILER> <FLAGS> -O coff <DEFINES> -i <SOURCE> -o <OBJECT>")
+	endif()
+endif()
+
 qt4_automoc(${paalternativelauncher_SRCS})
 
 QT4_ADD_RESOURCES(paalternativelauncher_RCC_SRCS paalternativelauncher.qrc)
 
-add_executable(paalternativelauncher ${paalternativelauncher_SRCS} ${paalternativelauncher_RCC_SRCS})
+add_executable(paalternativelauncher ${paalternativelauncher_SRCS} ${paalternativelauncher_RCC_SRCS} ${RES_FILES})
 if(WIN32)
 	target_link_libraries(paalternativelauncher ${QT_QTNETWORK_LIBRARIES} ${QT_QTGUI_LIBRARY} ${QT_QTCORE_LIBRARY} ${ZLIB_LIBRARY} ${QJSON_LIBRARIES} -mwindows -lws2_32 -ljpeg -lpng -ltiff -llzma -lmng -lz -limm32 -llcms -lwinmm -lssl -lcrypto)
 else()

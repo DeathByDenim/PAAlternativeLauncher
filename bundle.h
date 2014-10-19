@@ -59,11 +59,12 @@ private:
 	int m_current_entry_index;
     int m_alreadyread;
 	qint64 m_alreadydownloaded;
-	
+	bool m_error_occured;
+
 	QFile m_cache_file;
 
 	static bool verifyEntry(entry_t entry);
-	void nextFile();
+	void nextFile(QNetworkReply *reply);
 
 private slots:
 	void verifyFinished();
@@ -75,6 +76,7 @@ private slots:
 signals:
 	void verifyDone(size_t bytes_to_download);
 	void downloadProgress(qint64);
+	void errorOccurred();
 	void done();
 };
 
