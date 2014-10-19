@@ -63,6 +63,7 @@ private slots:
 	void downloadPushButtonClicked(bool);
 	void installPathButtonClicked(bool);
 	void launchPushButtonClicked(bool);
+	void launchOfflinePushButtonClicked(bool);
 	void advancedPushButtonClicked(bool);
 	void replyReceived(QNetworkReply *reply);
 	void patcherProgress(int percentage);

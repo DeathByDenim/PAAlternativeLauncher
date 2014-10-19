@@ -190,6 +190,10 @@ QWidget* PAAlternativeLauncher::createLoginWidget(QWidget *parent)
 	mainLayout->addRow(loginButton);
 	connect(loginButton, SIGNAL(clicked(bool)), SLOT(loginPushButtonClicked(bool)));
 
+	QPushButton *launchOfflineButton = new QPushButton(tr("Launch offline"), mainWidget);
+	mainLayout->addRow(launchOfflineButton);
+	connect(launchOfflineButton, SIGNAL(clicked(bool)), SLOT(launchOfflinePushButtonClicked(bool)));
+
 	QSettings settings(QSettings::UserScope, "DeathByDenim", "PAAlternativeLauncher");
 	m_username_lineedit->setText(settings.value("login/username").toString());
 
@@ -278,6 +282,12 @@ QWidget* PAAlternativeLauncher::createWaitWidget(QWidget* parent)
 	mainLayout->addWidget(loadingLabel);
 
 	mainLayout->addStretch();
+
+	QPushButton *launchOfflineButton = new QPushButton(tr("Launch offline"), mainWidget);
+	mainLayout->addWidget(launchOfflineButton);
+	connect(launchOfflineButton, SIGNAL(clicked(bool)), SLOT(launchOfflinePushButtonClicked(bool)));
+
+
 
 	return mainWidget;
 }
@@ -517,6 +527,52 @@ void PAAlternativeLauncher::launchPushButtonClicked(bool)
 
 	parameters.append("--ticket");
 	parameters.append(m_session_ticket);
+	parameters.append(m_extraParameters.split(" "));
+
+	if(QProcess::startDetached(command, parameters))
+	{
+		close();
+	}
+	else
+		info.critical(tr("Failed to launch"), tr("Error while starting PA with the following command:") + "\n" + command);
+}
+
+void PAAlternativeLauncher::launchOfflinePushButtonClicked(bool)
+{
+	// Update manually, because no stream are selected yet.
+	streamsCurrentIndexChanged("stable");
+
+	QString command;
+	QStringList parameters;
+
+	command =
+		m_installPathLineEdit->text() +
+#ifdef linux
+		"/PA"
+#elif _WIN32
+		"\\bin_x64\\PA.exe"
+// or:	"\\bin_x86\\PA.exe"
+#elif __APPLE__
+#	error Right...
+#endif
+	;
+
+#ifdef linux
+	switch(m_use_optimus)
+	{
+		case AdvancedDialog::optirun:
+			parameters << command;
+			command = "optirun";
+			break;
+		case AdvancedDialog::primusrun:
+			parameters << command;
+			command = "primusrun";
+			break;
+		default:
+			break;
+	}
+#endif
+
 	parameters.append(m_extraParameters.split(" "));
 
 	if(QProcess::startDetached(command, parameters))
