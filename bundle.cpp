@@ -191,6 +191,7 @@ void Bundle::download()
 	m_alreadyread = 0;
 	m_alreadydownloaded = 0;
 	QNetworkRequest request(m_url);
+	info.log(tr("Preparing to download"), m_url.toString());
 	QNetworkReply *reply = m_network_access_manager->get(request);
 	connect(reply, SIGNAL(downloadProgress(qint64,qint64)), SLOT(downloadProgress(qint64,qint64)));
 	connect(reply, SIGNAL(finished()), SLOT(downloadFinished()));
@@ -208,7 +209,6 @@ void Bundle::nextFile(QNetworkReply* reply)
 
 	info.log("Next file", QString("%1:%2").arg(m_checksum).arg(m_current_entry_index+1), true);
 
-	
 	m_current_entry_index++;
 	if(m_current_entry_index == m_entries.count())
 	{
@@ -284,6 +284,14 @@ void Bundle::downloadFinished()
 		}
 		else
 		{
+			for(int i = 0; i < m_entry_file.count(); i++)
+			{
+				m_entry_file[i]->close();
+				delete m_entry_file[i];
+			}
+			m_entry_file.clear();
+
+			info.log(tr("Downloading"), tr("Done with %1").arg(m_checksum));
 			QByteArray streamdata = reply->readAll();
 			if(streamdata.count() != 0)
 			{

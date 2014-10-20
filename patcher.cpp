@@ -88,6 +88,12 @@ QStringList Patcher::streamNames()
 
 void Patcher::downloadStream(const QString streamname)
 {
+	while(!m_bundles.isEmpty())
+	{
+		delete m_bundles[0];
+		m_bundles.removeFirst();
+	}
+
 	for(QList<Stream>::const_iterator stream = m_streams.constBegin(); stream != m_streams.constEnd(); ++stream)
 	{
 		if(streamname == stream->StreamName)
@@ -259,8 +265,15 @@ void Patcher::bundleVerifyDone(size_t size)
 			}
 		}
 
-		if(m_num_total_download_items == 0)
+		if(m_num_total_download_items == 0 || m_num_current_downloaded_items == m_num_total_download_items)
+		{
+			while(!m_bundles.isEmpty())
+			{
+				delete m_bundles[0];
+				m_bundles.removeFirst();
+			}
 			emit state("Done");
+		}
 		else
 			emit state("Downloading and installing bundles");
 	}
@@ -271,6 +284,11 @@ void Patcher::bundleDownloadDone()
 	m_num_current_downloaded_items++;
 	if(m_num_current_downloaded_items == m_num_total_download_items)
 	{
+		while(!m_bundles.isEmpty())
+		{
+			delete m_bundles[0];
+			m_bundles.removeFirst();
+		}
 		emit state("Done");
 	}
 }

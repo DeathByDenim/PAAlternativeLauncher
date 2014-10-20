@@ -190,7 +190,7 @@ QWidget* PAAlternativeLauncher::createLoginWidget(QWidget *parent)
 	mainLayout->addRow(loginButton);
 	connect(loginButton, SIGNAL(clicked(bool)), SLOT(loginPushButtonClicked(bool)));
 
-	QPushButton *launchOfflineButton = new QPushButton(tr("Launch offline"), mainWidget);
+	QPushButton *launchOfflineButton = new QPushButton(tr("Launch offline (no password needed)"), mainWidget);
 	mainLayout->addRow(launchOfflineButton);
 	connect(launchOfflineButton, SIGNAL(clicked(bool)), SLOT(launchOfflinePushButtonClicked(bool)));
 
