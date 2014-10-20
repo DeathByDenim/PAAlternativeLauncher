@@ -328,9 +328,11 @@ void Bundle::readyRead()
 			if(m_current_entry_index >= m_entries.count())
 				break;
 
+			info.log(tr("Data"), tr("Requesting %1 (%2 %3))").arg(m_entries[m_current_entry_index].next_offset - m_alreadyread).arg(m_entries[m_current_entry_index].next_offset).arg(m_alreadyread), true);
 			QByteArray streamdata = reply->read(m_entries[m_current_entry_index].next_offset - m_alreadyread);
 			if(streamdata.count() == 0)
 				break;
+			info.log(tr("Data"), tr("Got %1").arg(streamdata.count()), true);
 
 			QByteArray outputdata(8*1024, Qt::Uninitialized);
 
@@ -365,7 +367,15 @@ void Bundle::readyRead()
 				do
 				{
 					inflate_status = inflate(&m_gzipstream, Z_SYNC_FLUSH);
-					
+					if(inflate_status < 0)
+					{
+						m_error_occured = true;
+						emit errorOccurred();
+						reply->abort();
+						info.critical(tr("I/O error"), tr("Decompress error (%1) (bundle)").arg(inflate_status));
+						return;
+					}
+
 					if(m_gzipstream.avail_out == 0)
 					{
 						for(QList<QFile *>::iterator entryfile = m_entry_file.begin(); entryfile != m_entry_file.end(); ++entryfile)
