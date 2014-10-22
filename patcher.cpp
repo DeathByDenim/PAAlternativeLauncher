@@ -167,8 +167,8 @@ void Patcher::manifestReadyRead()
 		if(inflate_status < 0)
 		{
 			m_error_occured = true;
-			emit state("Done");
 			reply->abort();
+			emit state("Done");
 			info.critical(tr("I/O error"), tr("Decompress error") + QString(" (1) (%1)").arg(inflate_status));
 			return;
 		}

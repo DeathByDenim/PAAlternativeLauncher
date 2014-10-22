@@ -329,9 +329,15 @@ void Bundle::readyRead()
 				break;
 
 			info.log(tr("Data"), tr("Requesting %1 (%2 %3))").arg(m_entries[m_current_entry_index].next_offset - m_alreadyread).arg(m_entries[m_current_entry_index].next_offset).arg(m_alreadyread), true);
-			QByteArray streamdata = reply->read(m_entries[m_current_entry_index].next_offset - m_alreadyread);
+			QByteArray streamdata = reply->read(qMin<qint64>(m_entries[m_current_entry_index].next_offset - m_alreadyread, reply->bytesAvailable()));
 			if(streamdata.count() == 0)
+			{
+				m_error_occured = true;
+				emit errorOccurred();
+				reply->abort();
+				info.critical(tr("I/O error"), tr("Read zero bytes from buffer (%1)").arg(reply->errorString()));
 				break;
+			}
 			info.log(tr("Data"), tr("Got %1").arg(streamdata.count()), true);
 
 			QByteArray outputdata(8*1024, Qt::Uninitialized);
