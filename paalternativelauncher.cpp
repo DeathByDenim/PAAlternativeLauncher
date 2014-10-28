@@ -621,15 +621,15 @@ void PAAlternativeLauncher::checkForUpdates(QStringList streamnames)
 	for(QStringList::const_iterator streamname = streamnames.constBegin(); streamname != streamnames.constEnd(); ++streamname)
 	{
 		QString installpath = settings.value(*streamname + "/installpath").toString();
-		QFile buildidfile(installpath + "/buildid.txt");
+		QFile buildidfile(installpath + "/version.txt");
 		if(!buildidfile.open(QIODevice::ReadOnly))
 		{
 			m_requires_update[*streamname] = true;
 			break;
 		}
 		QByteArray buildidbytearray = buildidfile.readLine();
-		m_requires_update[*streamname] = (buildidbytearray.mid(8).trimmed() != m_patcher.buildId(*streamname));
-		
+		m_requires_update[*streamname] = (buildidbytearray.trimmed() != m_patcher.buildId(*streamname));
+
 		if(m_requires_update[m_streams_combo_box->currentText()])
 			m_update_available_label->setText(tr("Update available!"));
 		else
