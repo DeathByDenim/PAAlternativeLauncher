@@ -90,26 +90,29 @@ Bundle::~Bundle()
 	m_cache_file.close();
 }
 
-
 // VERIFICATION
 void Bundle::verifyAndMaybeDownload()
 {
 	m_verification_state = unknown;
-	QFuture<bool> status = QtConcurrent::mapped(m_entries, verifyEntry);
 	QFutureWatcher<bool> *statuswatcher = new QFutureWatcher<bool>(this);
 	connect(statuswatcher, SIGNAL(finished()), SLOT(verifyFinished()));
+
+    QFuture<bool> status = QtConcurrent::mapped(m_entries, Bundle::verifyEntry);
 	statuswatcher->setFuture(status);
 }
 
 bool Bundle::verifyEntry(Bundle::entry_t entry)
 {
-	char buffer[33];
+	char *buffer = new char[33];
+    qDebug() << entry.offset;
 	for(QStringList::const_iterator filename = entry.fullfilename.constBegin(); filename != entry.fullfilename.constEnd(); ++filename)
 	{
 		SHA1::calculateSHA1(filename->toStdString().c_str(), buffer);
+        
 		if(entry.checksum != buffer)
 			return false;
 	}
+    delete[] buffer;
 
 	return true;
 }

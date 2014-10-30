@@ -55,7 +55,7 @@ public:
 	SHA1& operator<<(const unsigned char *message_array);
 	SHA1& operator<<(const char message_element);
 	SHA1& operator<<(const unsigned char message_element);
-	static bool calculateSHA1(const char* filename, char buffer[33]);
+	static bool calculateSHA1(const char* filename, char *buffer);
 
 private:
 

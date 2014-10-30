@@ -33,7 +33,6 @@ public:
 	verification_state_t state() {return m_verification_state;}
 	size_t size() {return m_size;}
 
-private:
 	struct entry_t
 	{
 		size_t sizeZ;
@@ -46,6 +45,7 @@ private:
 
 		int next_offset;
 	};
+private:
 
 	QWidget *m_parent;
 	QString m_checksum;

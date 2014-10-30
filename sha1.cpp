@@ -594,7 +594,7 @@ unsigned SHA1::CircularShift(int bits, unsigned word)
     return ((word << bits) & 0xFFFFFFFF) | ((word & 0xFFFFFFFF) >> (32-bits));
 }
 
-bool SHA1::calculateSHA1(const char* filename, char buffer[33])
+bool SHA1::calculateSHA1(const char* filename, char *buffer)
 {
 	std::ifstream file(filename);
 	if(!file.good())
@@ -604,7 +604,7 @@ bool SHA1::calculateSHA1(const char* filename, char buffer[33])
 
 	const int buffersize = 4*1024;
 	char *localbuffer = new char[buffersize];
-	
+
 	while(!file.eof())
 	{
 		if(!file.good())
@@ -613,7 +613,8 @@ bool SHA1::calculateSHA1(const char* filename, char buffer[33])
 		file.read(localbuffer, buffersize);
 		sha.Input(localbuffer, file.gcount());
 	}
-	
+    delete[] localbuffer;
+
 	unsigned int result[5];
 	sha.Result(result);
 

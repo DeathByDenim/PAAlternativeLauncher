@@ -212,6 +212,7 @@ QWidget* PAAlternativeLauncher::createDownloadWidget(QWidget* parent)
 	QWidget *streamWidget = new QWidget(mainWidget);
 	QHBoxLayout *streamLayout = new QHBoxLayout(streamWidget);
 	QLabel *streamsLabel = new QLabel(tr("Stream"), streamWidget);
+    streamsLabel->setPalette(palette);
 	streamLayout->addWidget(streamsLabel);
 	m_streams_combo_box = new QComboBox(streamWidget);
 	streamLayout->addWidget(m_streams_combo_box);
@@ -219,6 +220,7 @@ QWidget* PAAlternativeLauncher::createDownloadWidget(QWidget* parent)
 	streamLayout->addStretch();
 	m_update_available_label = new QLabel("", streamWidget);
 	m_update_available_label->setStyleSheet("QLabel {font-weight: bold; color: white}");
+    m_update_available_label->setPalette(palette);
 	streamLayout->addWidget(m_update_available_label);
 	mainLayout->addWidget(streamWidget);
 
@@ -270,6 +272,7 @@ QWidget* PAAlternativeLauncher::createWaitWidget(QWidget* parent)
 	font.setPointSizeF(3*font.pointSizeF());
 	loggingInLabel->setFont(font);
 	loggingInLabel->setAlignment(Qt::AlignCenter);
+    loggingInLabel->setPalette(palette);
 	mainLayout->addWidget(loggingInLabel);
 
 	mainLayout->addSpacing(30);
@@ -279,6 +282,7 @@ QWidget* PAAlternativeLauncher::createWaitWidget(QWidget* parent)
 	loadingLabel->setMovie(loadingMovie);
 	loadingMovie->start();
 	loadingLabel->setAlignment(Qt::AlignCenter);
+    loadingLabel->setPalette(palette);
 	mainLayout->addWidget(loadingLabel);
 
 	mainLayout->addStretch();
@@ -506,7 +510,7 @@ void PAAlternativeLauncher::launchPushButtonClicked(bool)
 		"\\bin_x64\\PA.exe"
 // or:	"\\bin_x86\\PA.exe"
 #elif __APPLE__
-#	error Right...
+        "/PA.app/Contents/MacOS/PA"
 #endif
 	;
 
@@ -553,7 +557,7 @@ void PAAlternativeLauncher::launchOfflinePushButtonClicked(bool)
 		"\\bin_x64\\PA.exe"
 // or:	"\\bin_x86\\PA.exe"
 #elif __APPLE__
-#	error Right...
+    "/PA.app/Contents/MacOS/PA"
 #endif
 	;
 
@@ -621,7 +625,11 @@ void PAAlternativeLauncher::checkForUpdates(QStringList streamnames)
 	for(QStringList::const_iterator streamname = streamnames.constBegin(); streamname != streamnames.constEnd(); ++streamname)
 	{
 		QString installpath = settings.value(*streamname + "/installpath").toString();
+#ifdef __APPLE__
+		QFile buildidfile(installpath + "/PA.app/Contents/Resources/version.txt");
+#else
 		QFile buildidfile(installpath + "/version.txt");
+#endif
 		if(!buildidfile.open(QIODevice::ReadOnly))
 		{
 			m_requires_update[*streamname] = true;
