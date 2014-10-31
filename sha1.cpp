@@ -618,7 +618,7 @@ bool SHA1::calculateSHA1(const char* filename, char *buffer)
 	unsigned int result[5];
 	sha.Result(result);
 
-	sprintf(buffer, "%08x%08x%08x%08x%08x", result[0], result[1], result[2], result[3], result[4]);
+	snprintf(buffer, 5*8+1, "%08x%08x%08x%08x%08x", result[0], result[1], result[2], result[3], result[4]);
 
 	return true;
 }

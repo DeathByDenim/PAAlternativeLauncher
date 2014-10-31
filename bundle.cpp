@@ -103,16 +103,16 @@ void Bundle::verifyAndMaybeDownload()
 
 bool Bundle::verifyEntry(Bundle::entry_t entry)
 {
-	char *buffer = new char[33];
-    qDebug() << entry.offset;
+	char *buffer = new char[5*8+1];
 	for(QStringList::const_iterator filename = entry.fullfilename.constBegin(); filename != entry.fullfilename.constEnd(); ++filename)
 	{
 		SHA1::calculateSHA1(filename->toStdString().c_str(), buffer);
-        
+
 		if(entry.checksum != buffer)
 			return false;
 	}
-    delete[] buffer;
+
+	delete[] buffer;
 
 	return true;
 }
