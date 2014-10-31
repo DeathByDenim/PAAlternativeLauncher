@@ -57,7 +57,7 @@ private:
 	verification_state_t m_verification_state;
 	QList<QFile *> m_entry_file;
 	int m_current_entry_index;
-    int m_alreadyread;
+	int m_alreadyread;
 	qint64 m_alreadydownloaded;
 	bool m_error_occured;
 
@@ -71,7 +71,7 @@ private slots:
 	void downloadFinished();
 	void downloadProgress(qint64 value, qint64);
 	void readyRead();
-    void download();
+	void download();
 
 signals:
 	void verifyDone(size_t bytes_to_download);

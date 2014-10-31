@@ -97,7 +97,7 @@ void Bundle::verifyAndMaybeDownload()
 	QFutureWatcher<bool> *statuswatcher = new QFutureWatcher<bool>(this);
 	connect(statuswatcher, SIGNAL(finished()), SLOT(verifyFinished()));
 
-    QFuture<bool> status = QtConcurrent::mapped(m_entries, Bundle::verifyEntry);
+	QFuture<bool> status = QtConcurrent::mapped(m_entries, Bundle::verifyEntry);
 	statuswatcher->setFuture(status);
 }
 

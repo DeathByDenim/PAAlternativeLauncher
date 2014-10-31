@@ -18,16 +18,15 @@ public:
 	~AdvancedDialog();
 
 	QString parameters() {return m_parametersLineEdit->text();}
-	
 	optimus_t useOptimus();
 
 private:
 	QString m_parameters;
 	QLineEdit *m_parametersLineEdit;
 	QGroupBox *m_optimusGroupBox;
-    QRadioButton* m_nooptimusRadioButton;
-    QRadioButton* m_optirunRadioButton;
-    QRadioButton* m_primusrunRadioButton;
+	QRadioButton* m_nooptimusRadioButton;
+	QRadioButton* m_optirunRadioButton;
+	QRadioButton* m_primusrunRadioButton;
 };
 
 #endif // ADVANCEDDIALOG_H

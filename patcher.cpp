@@ -118,11 +118,7 @@ void Patcher::downloadManifest(const Patcher::Stream &stream)
 	m_manifest_zstream.avail_out = m_manifest_bytearray.count();
 
 	// 16+MAX_WBITS means read as gzip.
-#ifdef _WIN32
 	if(inflateInit2(&m_manifest_zstream, 16 + MAX_WBITS) != Z_OK)
-#else
-	if(inflateInit2(&m_manifest_zstream, 16 + MAX_WBITS) != Z_OK)
-#endif
 	{
 		m_error_occured = true;
 		info.critical("ZLib", tr("Couldn't init zlibstream."));

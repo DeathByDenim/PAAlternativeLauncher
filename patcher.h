@@ -33,7 +33,7 @@ public:
 	};
 
 	void decodeStreamsData(QByteArray data);
-    QStringList streamNames();
+	QStringList streamNames();
 	QString buildId(QString streamname);
 	void downloadStream(const QString streamname);
 	void setInstallPath(QString installpath);

@@ -39,19 +39,19 @@ private:
 	QLineEdit *m_password_lineedit;
 	Patcher m_patcher;
 	const QString m_platform;
-    QLineEdit* m_installPathLineEdit;
+	QLineEdit* m_installPathLineEdit;
 	QString m_extraParameters;
 	QMap<QString,QString> m_stream_news;
 	QMap<QString,bool> m_requires_update;
 	AdvancedDialog::optimus_t m_use_optimus;
-    QLabel* m_update_available_label;
-    QPushButton* m_download_button;
+	QLabel* m_update_available_label;
+	QPushButton* m_download_button;
 
 	QWidget *createLoginWidget(QWidget* parent);
 	QWidget *createDownloadWidget(QWidget* parent);
 	QWidget *createWaitWidget(QWidget *parent);
 	QString decodeLoginData(const QByteArray& data);
-    void checkForUpdates(QStringList streamnames);
+	void checkForUpdates(QStringList streamnames);
 	quint64 getFreeDiskspaceInMB(QString directory);
 
 protected:
@@ -69,7 +69,7 @@ private slots:
 	void patcherProgress(int percentage);
 	void patcherState(QString state);
 	void streamsCurrentIndexChanged(QString streamname);
-    void lineEditReturnPressed();
+	void lineEditReturnPressed();
 };
 
 #endif // PAAlternativeLauncher_H

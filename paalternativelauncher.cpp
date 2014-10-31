@@ -212,7 +212,7 @@ QWidget* PAAlternativeLauncher::createDownloadWidget(QWidget* parent)
 	QWidget *streamWidget = new QWidget(mainWidget);
 	QHBoxLayout *streamLayout = new QHBoxLayout(streamWidget);
 	QLabel *streamsLabel = new QLabel(tr("Stream"), streamWidget);
-    streamsLabel->setPalette(palette);
+	streamsLabel->setPalette(palette);
 	streamLayout->addWidget(streamsLabel);
 	m_streams_combo_box = new QComboBox(streamWidget);
 	streamLayout->addWidget(m_streams_combo_box);
@@ -220,7 +220,7 @@ QWidget* PAAlternativeLauncher::createDownloadWidget(QWidget* parent)
 	streamLayout->addStretch();
 	m_update_available_label = new QLabel("", streamWidget);
 	m_update_available_label->setStyleSheet("QLabel {font-weight: bold; color: white}");
-    m_update_available_label->setPalette(palette);
+	m_update_available_label->setPalette(palette);
 	streamLayout->addWidget(m_update_available_label);
 	mainLayout->addWidget(streamWidget);
 
@@ -272,7 +272,7 @@ QWidget* PAAlternativeLauncher::createWaitWidget(QWidget* parent)
 	font.setPointSizeF(3*font.pointSizeF());
 	loggingInLabel->setFont(font);
 	loggingInLabel->setAlignment(Qt::AlignCenter);
-    loggingInLabel->setPalette(palette);
+	loggingInLabel->setPalette(palette);
 	mainLayout->addWidget(loggingInLabel);
 
 	mainLayout->addSpacing(30);
@@ -282,7 +282,7 @@ QWidget* PAAlternativeLauncher::createWaitWidget(QWidget* parent)
 	loadingLabel->setMovie(loadingMovie);
 	loadingMovie->start();
 	loadingLabel->setAlignment(Qt::AlignCenter);
-    loadingLabel->setPalette(palette);
+	loadingLabel->setPalette(palette);
 	mainLayout->addWidget(loadingLabel);
 
 	mainLayout->addStretch();
@@ -510,7 +510,7 @@ void PAAlternativeLauncher::launchPushButtonClicked(bool)
 		"\\bin_x64\\PA.exe"
 // or:	"\\bin_x86\\PA.exe"
 #elif __APPLE__
-        "/PA.app/Contents/MacOS/PA"
+		"/PA.app/Contents/MacOS/PA"
 #endif
 	;
 
@@ -557,7 +557,7 @@ void PAAlternativeLauncher::launchOfflinePushButtonClicked(bool)
 		"\\bin_x64\\PA.exe"
 // or:	"\\bin_x86\\PA.exe"
 #elif __APPLE__
-    "/PA.app/Contents/MacOS/PA"
+	"/PA.app/Contents/MacOS/PA"
 #endif
 	;
 
