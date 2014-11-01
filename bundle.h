@@ -53,6 +53,7 @@ private:
 	QUrl m_url;
 	QList<entry_t> m_entries;
 	z_stream m_gzipstream;
+	int m_inflate_status;
 	QNetworkAccessManager *m_network_access_manager;
 	verification_state_t m_verification_state;
 	QList<QFile *> m_entry_file;

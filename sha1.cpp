@@ -46,6 +46,8 @@
 #include <sstream>
 #include "sha1.h"
 
+extern bool globalabortflag;
+
 /*  
  *  SHA1
  *
@@ -605,7 +607,7 @@ bool SHA1::calculateSHA1(const char* filename, char *buffer)
 	const int buffersize = 4*1024;
 	char *localbuffer = new char[buffersize];
 
-	while(!file.eof())
+	while(!file.eof() && !globalabortflag)
 	{
 		if(!file.good())
 			return false;

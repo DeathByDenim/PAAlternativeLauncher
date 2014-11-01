@@ -56,6 +56,7 @@ private:
 	size_t m_current_bundle_downloaded;
 	size_t m_total_bundle_download_size;
 	bool m_error_occured;
+	int m_inflate_status;
 
 	void downloadManifest(const Patcher::Stream& stream);
 	void processManifest(QVariantMap manifest);

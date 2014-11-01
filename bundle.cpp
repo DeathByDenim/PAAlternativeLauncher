@@ -12,6 +12,8 @@
 #include "sha1.h"
 #include "information.h"
 
+extern bool globalabortflag;
+
 Bundle::Bundle(QString installpath, QVariant bundlevariant, QString downloadurl, QString titlefolder, QString authsuffix, QNetworkAccessManager *networkaccessmanager, QWidget *parent)
  : m_parent(parent), m_verification_state(unknown), m_error_occured(false)
 {
@@ -106,6 +108,9 @@ bool Bundle::verifyEntry(Bundle::entry_t entry)
 	char *buffer = new char[5*8+1];
 	for(QStringList::const_iterator filename = entry.fullfilename.constBegin(); filename != entry.fullfilename.constEnd(); ++filename)
 	{
+		if(globalabortflag)
+			return true;
+
 		SHA1::calculateSHA1(filename->toStdString().c_str(), buffer);
 
 		if(entry.checksum != buffer)
@@ -125,6 +130,9 @@ void Bundle::verifyFinished()
 		QFuture<bool> status = watcher->future();
 		for(QFuture<bool>::const_iterator bundle_ok = status.constBegin(); bundle_ok != status.constEnd(); ++bundle_ok)
 		{
+			if(globalabortflag)
+				return;
+
 			if(!*bundle_ok)
 			{
 				info.log("Download required for", m_checksum);
@@ -183,7 +191,8 @@ void Bundle::download()
 	m_gzipstream.avail_out = 0;
 
 	// 16+MAX_WBITS means read as gzip.
-	if(inflateInit2(&m_gzipstream, 16 + MAX_WBITS) != Z_OK)
+	m_inflate_status = inflateInit2(&m_gzipstream, 16 + MAX_WBITS);
+	if(m_inflate_status != Z_OK)
 	{
 		m_error_occured = true;
 		emit errorOccurred();
@@ -259,7 +268,8 @@ void Bundle::nextFile(QNetworkReply* reply)
 	m_gzipstream.avail_out = 0;
 
 	// 16+MAX_WBITS means read as gzip.
-	if(inflateInit2(&m_gzipstream, 16 + MAX_WBITS) != Z_OK)
+	m_inflate_status = inflateInit2(&m_gzipstream, 16 + MAX_WBITS);
+	if(m_inflate_status != Z_OK)
 	{
 		m_error_occured = true;
 		emit errorOccurred();
@@ -325,6 +335,12 @@ void Bundle::readyRead()
 	QNetworkReply *reply = dynamic_cast<QNetworkReply *>(sender());
 	if(reply)
 	{
+		if(globalabortflag)
+		{
+			reply->abort();
+			return;
+		}
+
 		info.log(tr("Data received"), tr("%1 bytes").arg(reply->bytesAvailable()), true);
 		do
 		{
@@ -372,16 +388,15 @@ void Bundle::readyRead()
 				m_gzipstream.avail_in = streamdata.count();
 				m_gzipstream.next_out = (Bytef *)outputdata.data();
 				m_gzipstream.avail_out = outputdata.count();
-				int inflate_status;
 				do
 				{
-					inflate_status = inflate(&m_gzipstream, Z_SYNC_FLUSH);
-					if(inflate_status < 0)
+					m_inflate_status = inflate(&m_gzipstream, Z_SYNC_FLUSH);
+					if(m_inflate_status < 0)
 					{
 						m_error_occured = true;
 						emit errorOccurred();
 						reply->abort();
-						info.critical(tr("I/O error"), tr("Decompress error (%1) (bundle)").arg(inflate_status));
+						info.critical(tr("I/O error"), tr("Decompress error (%1) (bundle)").arg(m_inflate_status));
 						return;
 					}
 
@@ -404,7 +419,7 @@ void Bundle::readyRead()
 						m_gzipstream.avail_out = outputdata.count();
 					}
 				}
-				while(inflate_status == Z_OK && m_gzipstream.avail_in > 0);
+				while(m_inflate_status == Z_OK && m_gzipstream.avail_in > 0);
 
 				outputdata.truncate(outputdata.count()-m_gzipstream.avail_out);
 				for(QList<QFile *>::iterator entryfile = m_entry_file.begin(); entryfile != m_entry_file.end(); ++entryfile)
@@ -422,9 +437,9 @@ void Bundle::readyRead()
 				info.log("Writing to file", QString("(3) %1 bytes written to %2.").arg(outputdata.count()).arg(m_entry_file[0]->fileName()), true);
 				m_alreadyread += streamdata.count();
 
-				if(inflate_status == Z_STREAM_END)
+				if(m_inflate_status == Z_STREAM_END)
 					nextFile(reply);
-				else if(inflate_status < 0)
+				else if(m_inflate_status < 0)
 				{
 					m_error_occured = true;
 					emit errorOccurred();

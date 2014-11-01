@@ -16,6 +16,8 @@
 #include "sha1.h"
 #include "information.h"
 
+extern bool globalabortflag;
+
 Patcher::Patcher(QWidget* parent)
  : m_parent(parent)
  , m_buffer_increment(8*1024)
@@ -118,7 +120,8 @@ void Patcher::downloadManifest(const Patcher::Stream &stream)
 	m_manifest_zstream.avail_out = m_manifest_bytearray.count();
 
 	// 16+MAX_WBITS means read as gzip.
-	if(inflateInit2(&m_manifest_zstream, 16 + MAX_WBITS) != Z_OK)
+	m_inflate_status = inflateInit2(&m_manifest_zstream, 16 + MAX_WBITS);
+	if(m_inflate_status != Z_OK)
 	{
 		m_error_occured = true;
 		info.critical("ZLib", tr("Couldn't init zlibstream."));
@@ -140,16 +143,26 @@ void Patcher::manifestReadyRead()
 		return;
 
 	QNetworkReply *reply = dynamic_cast<QNetworkReply *>(sender());
-	if(reply)
+	if(reply && reply->error() == QNetworkReply::NoError)
 	{
-		int inflate_status;
+		if(globalabortflag)
+		{
+			reply->abort();
+			return;
+		}
+
 		QByteArray inputdata = reply->readAll();
+		if(inputdata.count() == 0)
+		{
+			info.log("I/O", "inputdata has zero bytes");
+			return;
+		}
 
 		m_manifest_zstream.next_in = (Bytef *)inputdata.data();
 		m_manifest_zstream.avail_in = inputdata.count();
 		do
 		{
-			inflate_status = inflate(&m_manifest_zstream, Z_SYNC_FLUSH);
+			m_inflate_status = inflate(&m_manifest_zstream, Z_SYNC_FLUSH);
 			if(m_manifest_zstream.avail_out == 0)
 			{
 				int oldsize = m_manifest_bytearray.count();
@@ -158,22 +171,27 @@ void Patcher::manifestReadyRead()
 				m_manifest_zstream.avail_out = m_buffer_increment;
 			}
 		}
-		while(inflate_status == Z_OK && m_manifest_zstream.avail_in > 0);
+		while(m_inflate_status == Z_OK && m_manifest_zstream.avail_in > 0);
 
-		if(inflate_status < 0)
+		if(m_inflate_status < 0)
 		{
 			m_error_occured = true;
 			reply->abort();
 			emit state("Done");
-			info.critical(tr("I/O error"), tr("Decompress error") + QString(" (1) (%1)").arg(inflate_status));
+			info.critical(tr("I/O error"), tr("Decompress error") + QString(" (1) (%1)").arg(m_inflate_status));
 			return;
 		}
+
+		if(m_inflate_status == Z_STREAM_END)
+			info.log("I/O", "Decompression done", true);
 	}
 }
 
 void Patcher::manifestFinished()
 {
-	if(m_error_occured)
+	inflateEnd(&m_manifest_zstream);
+
+	if(m_error_occured || globalabortflag)
 		return;
 
 	QNetworkReply *reply = dynamic_cast<QNetworkReply *>(sender());
@@ -190,15 +208,13 @@ void Patcher::manifestFinished()
 	{
 		emit progress(100);
 
-		int inflate_status = inflate(&m_manifest_zstream, Z_SYNC_FLUSH);
 		m_manifest_bytearray.truncate(m_manifest_bytearray.count() - m_manifest_zstream.avail_out);
-		inflateEnd(&m_manifest_zstream);
 
-		if(inflate_status != Z_STREAM_END)
+		if(m_inflate_status != Z_STREAM_END)
 		{
 			m_error_occured = true;
 			emit state("Done");
-			info.critical(tr("I/O error"), tr("Decompress error") + " (2)");
+			info.critical(tr("I/O error"), tr("Decompress error") + QString(" (2) (%1)").arg(m_inflate_status));
 		}
 		else
 			verify();

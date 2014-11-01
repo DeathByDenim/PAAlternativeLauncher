@@ -38,6 +38,10 @@
 #include <qjson/parser.h>
 #include <climits>
 
+
+// If this is set to true, then the program is quitting.
+bool globalabortflag = false;
+
 PAAlternativeLauncher::PAAlternativeLauncher()
  : m_network_access_manager(new QNetworkAccessManager(this))
  , m_patcher(this)
@@ -159,6 +163,8 @@ PAAlternativeLauncher::PAAlternativeLauncher()
 
 PAAlternativeLauncher::~PAAlternativeLauncher()
 {
+	globalabortflag = true;
+	info.log("Stopping launcher", QDateTime::currentDateTime().toString());
 }
 
 QWidget* PAAlternativeLauncher::createLoginWidget(QWidget *parent)
