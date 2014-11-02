@@ -1,4 +1,4 @@
-#define VERSION "0.3.1"
+#define VERSION "0.4"
 
 #include "paalternativelauncher.h"
 #include "advanceddialog.h"
@@ -37,7 +37,6 @@
 #endif
 #include <qjson/parser.h>
 #include <climits>
-
 
 // If this is set to true, then the program is quitting.
 bool globalabortflag = false;
@@ -408,31 +407,15 @@ QString PAAlternativeLauncher::decodeLoginData(const QByteArray &data)
 {
 	QJson::Parser parser;
 	bool ok;
-	
+
 	QVariantMap logindata = parser.parse(data, &ok).toMap();
 	if(!ok)
 	{
+		info.critical(tr("Login"), tr("Failed to parse login data"));
+		return "";
 	}
 
-	const QString sessionticketstring = "\"SessionTicket\"";
-	int pos = data.indexOf(sessionticketstring);
-	if(pos > 0)
-	{
-		pos += sessionticketstring.count() + 1;
-		pos = data.indexOf("\"", pos);
-		if(pos >= 0)
-		{
-			int begin = pos + 1;
-			pos = data.indexOf("\"", begin);
-			if(pos >= 0)
-			{
-				int end = pos;
-				return data.mid(begin, end - begin);
-			}
-		}
-	}
-
-	return QString("");
+	return logindata["SessionTicket"].toString();
 }
 
 void PAAlternativeLauncher::closeEvent(QCloseEvent* event)
