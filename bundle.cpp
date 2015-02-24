@@ -1,457 +1,412 @@
-#include <QNetworkAccessManager>
-#include <QNetworkReply>
-#include <QWidget>
-#include <QFuture>
-#include <QFutureWatcher>
-#include <QtConcurrentMap>
+#include "bundle.h"
+#include "patcher.h"
+#include "version.h"
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QDebug>
+#include <QFile>
 #include <QFileInfo>
 #include <QDir>
-#include <climits>
-#include <qjson/serializer.h>
-#include "bundle.h"
-#include "sha1.h"
-#include "information.h"
+#include <QtConcurrent>
+#include <QFuture>
+#include <QFutureWatcher>
+#include <QCryptographicHash>
+#include <QNetworkReply>
+#include <QMessageBox>
+#include <zlib.h>
+#if defined(_WIN32)
+#  include <WinBase.h>
+#else
+#  include <unistd.h>
+#  include <cstring>
+#  include <cerrno>
+#endif
 
-extern bool globalabortflag;
-
-Bundle::Bundle(QString installpath, QVariant bundlevariant, QString downloadurl, QString titlefolder, QString authsuffix, QNetworkAccessManager *networkaccessmanager, QWidget *parent)
- : m_parent(parent), m_verification_state(unknown), m_error_occured(false)
+Bundle::Bundle(QString install_path, Patcher *patcher)
+ : QObject(), mInstallPath(install_path), mPatcher(patcher), mNeedsDownloading(false), mBufferSize(10*1024)
 {
-	m_network_access_manager = networkaccessmanager;
-
-	QVariantMap bundle = bundlevariant.toMap();
-	QVariantList entries = bundle["entries"].toList();
-	for(QVariantList::const_iterator entryvariant = entries.constBegin(); entryvariant != entries.constEnd(); ++entryvariant)
-	{
-		QVariantMap entryvariantmap = entryvariant->toMap();
-		entry_t entry;
-		entry.sizeZ = entryvariantmap["sizeZ"].toString().toULong();
-		entry.offset = entryvariantmap["offset"].toString().toULong();
-		entry.size = entryvariantmap["size"].toString().toULong();
-		entry.fullfilename << installpath + entryvariantmap["filename"].toString();
-		entry.checksumZ = entryvariantmap["checksumZ"].toString();
-		entry.checksum = entryvariantmap["checksum"].toString();
-		entry.executable = entryvariantmap.contains("executable") ? entryvariantmap["executable"].toBool() : false;
-		m_entries.push_back(entry);
-	}
-	m_size = bundle["size"].toString().toULong();
-	m_checksum = bundle["checksum"].toString();
-	
-
-	m_url = QUrl(QString("%1/%2/hashed/%3%4").arg(downloadurl).arg(titlefolder).arg(m_checksum).arg(authsuffix));
-
-	// Some files are just zero bytes. So be it, but get rid of them.
-	for(int i = m_entries.count()-1; i >= 0; i--)
-	{
-		if(m_entries[i].size == 0)
-		{
-			QFileInfo fileinfo(m_entries[i].fullfilename[0]);
-			fileinfo.absoluteDir().mkpath(".");
-			info.log("Empty file creation", m_entries[i].fullfilename[0]);
-
-			QFile file(m_entries[i].fullfilename[0]);
-			m_entries.removeAt(i);
-			if(!file.open(QIODevice::WriteOnly))
-			{
-				info.critical("File creation", "Could not create the file \"" + file.fileName() + "\"");
-			}
-			file.close();
-		}
-	}
-
-	// Some files are just a copy and have the same offset. Sneaky!
-	for(int i = m_entries.count()-1; i >= 0; i--)
-	{
-		for(int j = i-1; j >= 0; j--)
-		{
-			if(m_entries[i].offset == m_entries[j].offset && m_entries[i].size != 0 && m_entries[j].size != 0)
-			{
-				m_entries[j].fullfilename << m_entries[i].fullfilename;
-				m_entries.removeAt(i);
-				break;
-			}
-		}
-	}
-
-	int lastoffset = INT_MAX;
-	for(int i = m_entries.count()-1; i >= 0; i--)
-	{
-		m_entries[i].next_offset = lastoffset;
-		lastoffset = m_entries[i].offset;
-	}
+	mBuffer = NULL;
+	mCurrentFile = NULL;
 }
 
 Bundle::~Bundle()
 {
-	for(int i = 0; i < m_entry_file.count(); i++)
-	{
-		m_entry_file[i]->close();
-		delete m_entry_file[i];
-	}
-
-	m_cache_file.close();
+	if(mBuffer)
+		delete[] mBuffer;
+	
+	if(mCurrentFile)
+		delete mCurrentFile;
 }
 
-// VERIFICATION
-void Bundle::verifyAndMaybeDownload()
+void Bundle::verify(QJsonObject* array)
 {
-	m_verification_state = unknown;
-	QFutureWatcher<bool> *statuswatcher = new QFutureWatcher<bool>(this);
-	connect(statuswatcher, SIGNAL(finished()), SLOT(verifyFinished()));
+	Q_ASSERT(array != NULL);
 
-	QFuture<bool> status = QtConcurrent::mapped(m_entries, Bundle::verifyEntry);
-	statuswatcher->setFuture(status);
-}
+	mChecksum = (*array)["checksum"].toString();
+	mTotalSize = (*array)["size"].toString().toULong();
+	QJsonArray entries = (*array)["entries"].toArray();
 
-bool Bundle::verifyEntry(Bundle::entry_t entry)
-{
-	char *buffer = new char[5*8+1];
-	for(QStringList::const_iterator filename = entry.fullfilename.constBegin(); filename != entry.fullfilename.constEnd(); ++filename)
+	for(QJsonArray::const_iterator e = entries.constBegin(); e != entries.constEnd(); ++e)
 	{
-		if(globalabortflag)
-			return true;
+		File file_entry;
+		file_entry.filename = (*e).toObject()["filename"].toString();
+		file_entry.checksum = (*e).toObject()["checksum"].toString();
+		file_entry.offset = (*e).toObject()["offset"].toString().toULong();
+		file_entry.size = (*e).toObject()["size"].toString().toULong();
+		file_entry.sizeZ = (*e).toObject()["sizeZ"].toString().toULong();
+		file_entry.executable = (*e).toObject()["executable"].toBool();
+		file_entry.data_on_disk = NULL;
 
-		SHA1::calculateSHA1(filename->toStdString().c_str(), buffer);
-
-		if(entry.checksum != buffer)
-			return false;
-	}
-
-	delete[] buffer;
-
-	return true;
-}
-
-void Bundle::verifyFinished()
-{
-	QFutureWatcher<bool> *watcher = dynamic_cast< QFutureWatcher<bool>* >(sender());
-	if(watcher)
-	{
-		QFuture<bool> status = watcher->future();
-		for(QFuture<bool>::const_iterator bundle_ok = status.constBegin(); bundle_ok != status.constEnd(); ++bundle_ok)
+		if(file_entry.size == 0)
 		{
-			if(globalabortflag)
-				return;
+			createEmptyFile(file_entry.filename);
+			continue;
+		}
 
-			if(!*bundle_ok)
+		bool was_symlinked = false;
+		for(QList<File>::const_iterator prevfile = mFiles.constBegin(); prevfile != mFiles.constEnd(); ++prevfile)
+		{
+			if(prevfile->offset == file_entry.offset && prevfile->size != 0 && file_entry.size != 0)
 			{
-				info.log("Download required for", m_checksum);
-				m_verification_state = bad;
-				download();
-				emit verifyDone(m_size);
-				return;
+				createSymbolicLink(prevfile->filename, file_entry.filename);
+				was_symlinked = true;
+				break;
 			}
 		}
-		m_verification_state = good;
-		emit verifyDone(0);
+
+		if(was_symlinked)
+			continue;
+
+		if(mNeedsDownloading)
+		{
+			// No need to check files if we already know we need to download.
+			mFiles.push_back(file_entry);
+			continue;
+		}
+
+		file_entry.data_on_disk = new QByteArray(mPatcher->getFile(mInstallPath + "/" +file_entry.filename));
+		if(file_entry.data_on_disk->isNull())
+		{
+			// File does not exist. Therefore this bundle needs to be downloaded.
+			if(file_entry.size == 0)
+			{
+				// Except for zero byte files. Just create those.
+				QFile file(mPatcher->getFile(mInstallPath + "/" +file_entry.filename));
+				file.open(QFile::WriteOnly);
+				file.close();
+			}
+			else
+				mNeedsDownloading = true;
+		}
+		else
+		{
+			// Check the SHA1 checksum.
+			file_entry.future = QtConcurrent::run(verifySHA1, file_entry, &mNeedsDownloading);
+		}
+
+		mFiles.push_back(file_entry);
 	}
+
+	for(QList<File>::iterator f = mFiles.begin(); f != mFiles.end(); ++f)
+		(*f).future.waitForFinished();
+
+	if(mNeedsDownloading)
+		emit downloadMe();
+	
+	emit verifyDone();
 }
 
-
-// DOWNLOADING
-void Bundle::download()
+bool Bundle::verifySHA1(Bundle::File file_entry, bool* downloading)
 {
-	m_current_entry_index = 0;
+	if(*downloading)
+		// No need to verify the SHA1 if we are already downloading;
+		return false;
 
-	for(int i = 0; i < m_entry_file.count(); i++)
+	QCryptographicHash hash(QCryptographicHash::Sha1);
+
+	QBuffer buffer(file_entry.data_on_disk);
+	if(buffer.open(QBuffer::ReadOnly))
 	{
-		m_entry_file[i]->close();
-		delete m_entry_file[i];
-	}
-	m_entry_file.clear();
-
-	// Open the file or create it including the directories.
-	for(int i = 0; i < m_entries[0].fullfilename.count(); i++)
-	{
-		QFileInfo fileinfo(m_entries[0].fullfilename[i]);
-		fileinfo.absoluteDir().mkpath(".");
-
-		QFile *entryfile = new QFile(m_entries[0].fullfilename[i]);
-		m_entry_file << entryfile;
-		if(!m_entry_file[i]->open(QIODevice::WriteOnly))
+		while(!buffer.atEnd())
 		{
-			m_error_occured = true;
-			info.critical(tr("I/O error"), tr("Could not open file \"%1\" for writing.").arg(m_entries[0].fullfilename[i]));
-			emit errorOccurred();
-			return;
+			if(*downloading)
+				return false;
+
+			hash.addData(buffer.read(4096));
 		}
-		info.log("File creation", m_entries[0].fullfilename[i]);
-
-		if(m_entries[0].executable)
-			m_entry_file[i]->setPermissions(m_entry_file[i]->permissions() | QFile::ExeGroup | QFile::ExeOther | QFile::ExeOwner | QFile::ExeUser);
+		if(hash.result().toHex() == file_entry.checksum)
+		{
+//			qDebug() << "Checksum matches for" + file_entry.filename;
+			return true;
+		}
+		else
+		{
+			qDebug() << "Checksum FAILED for" + file_entry.filename;
+			qDebug() << file_entry.checksum << "!=" << hash.result().toHex();
+			*downloading = true;
+			return false;
+		}
 	}
+	else
+		;//FATAL
+}
 
-	// Set up Zlib for on-the-fly decompression;
-	m_gzipstream.zalloc = Z_NULL;
-	m_gzipstream.zfree = Z_NULL;
-	m_gzipstream.opaque = Z_NULL;
-	m_gzipstream.next_in = Z_NULL;
-	m_gzipstream.avail_in = 0;
-	m_gzipstream.next_out = Z_NULL;
-	m_gzipstream.avail_out = 0;
+void Bundle::downloadAndExtract(QNetworkAccessManager* network_access_manager, QString download_url)
+{
+	QNetworkRequest request(QUrl(download_url.arg(mChecksum)));
+	request.setRawHeader("User-Agent", QString("PAAlternativeLauncher/%1").arg(VERSION).toUtf8());
 
-	// 16+MAX_WBITS means read as gzip.
-	m_inflate_status = inflateInit2(&m_gzipstream, 16 + MAX_WBITS);
-	if(m_inflate_status != Z_OK)
-	{
-		m_error_occured = true;
-		emit errorOccurred();
-		info.critical("ZLib", tr("Couldn't init zlibstream."));
-		return;
-	}
+	mBytesDownloaded = 0;
+	mBytesProgress = 0;
+	mFilesCurrentIndex = 0;
+	prepareFile();
 
-	m_alreadyread = 0;
-	m_alreadydownloaded = 0;
-	QNetworkRequest request(m_url);
-	info.log(tr("Preparing to download"), m_url.toString());
-	QNetworkReply *reply = m_network_access_manager->get(request);
-	connect(reply, SIGNAL(downloadProgress(qint64,qint64)), SLOT(downloadProgress(qint64,qint64)));
+	if(mCurrentFileIsGzipped)
+		prepareZLib();
+
+	QNetworkReply *reply = network_access_manager->get(request);
 	connect(reply, SIGNAL(finished()), SLOT(downloadFinished()));
-	connect(reply, SIGNAL(readyRead()), SLOT(readyRead()));
+	connect(reply, SIGNAL(readyRead()), SLOT(downloadReadyRead()));
+	connect(reply, SIGNAL(downloadProgress(qint64,qint64)), SLOT(downloadProgress(qint64,qint64)));
 }
 
-void Bundle::nextFile(QNetworkReply* reply)
+void Bundle::downloadReadyRead()
 {
-	for(int i = 0; i < m_entry_file.count(); i++)
+	QNetworkReply *reply = dynamic_cast<QNetworkReply *>(sender());
+	if(reply)
 	{
-		m_entry_file[i]->close();
-		delete m_entry_file[i];
-	}
-	m_entry_file.clear();
-
-	info.log("Next file", QString("%1:%2").arg(m_checksum).arg(m_current_entry_index+1), true);
-
-	m_current_entry_index++;
-	if(m_current_entry_index == m_entries.count())
-	{
-		inflateEnd(&m_gzipstream);
-		return;
-	}
-
-	if(m_current_entry_index >= m_entries.count())
-	{
-		m_error_occured = true;
-		emit errorOccurred();
-		reply->abort();
-		info.critical("I/O error", "More files than expected!");
-		return;
-	}
-
-	for(int i = 0; i < m_entries[m_current_entry_index].fullfilename.count(); i++)
-	{
-		QFileInfo fileinfo(m_entries[m_current_entry_index].fullfilename[i]);
-		fileinfo.absoluteDir().mkpath(".");
-
-		QFile *entryfile = new QFile(m_entries[m_current_entry_index].fullfilename[i]);
-		m_entry_file << entryfile;
-		if(!m_entry_file[i]->open(QIODevice::WriteOnly))
+		if(reply->error() == QNetworkReply::NoError)
 		{
-			m_error_occured = true;
-			emit errorOccurred();
-			reply->abort();
-			info.critical(tr("I/O error"), tr("Could not open file \"%1\" for writing.").arg(m_entries[m_current_entry_index].fullfilename[i]));
-			return;
+			qint64 bytes_available = reply->bytesAvailable();
+			if(bytes_available > 0)
+			{
+				while(mFilesCurrentIndex < mFiles.count() - 1 && mBytesDownloaded + bytes_available > mFiles[mFilesCurrentIndex+1].offset && bytes_available > 0)
+				{
+					qint64 bytes_available_previous_file = mFiles[mFilesCurrentIndex+1].offset - mBytesDownloaded;
+					if(bytes_available_previous_file == 0)
+					{
+						nextFile();
+						continue;
+					}
+
+					processData(reply, bytes_available_previous_file);
+					bytes_available -= bytes_available_previous_file;
+
+					mBytesDownloaded += bytes_available_previous_file;
+				}
+
+				processData(reply, bytes_available);
+			}
+
+			mBytesDownloaded += bytes_available;
 		}
-		info.log("File creation", m_entries[m_current_entry_index].fullfilename[i]);
-
-		if(m_entries[m_current_entry_index].executable)
-			m_entry_file[i]->setPermissions(m_entry_file[i]->permissions() | QFile::ExeGroup | QFile::ExeOther | QFile::ExeOwner | QFile::ExeUser);
-	}
-
-	inflateEnd(&m_gzipstream);
-	m_gzipstream.zalloc = Z_NULL;
-	m_gzipstream.zfree = Z_NULL;
-	m_gzipstream.opaque = Z_NULL;
-	m_gzipstream.next_in = Z_NULL;
-	m_gzipstream.avail_in = 0;
-	m_gzipstream.next_out = Z_NULL;
-	m_gzipstream.avail_out = 0;
-
-	// 16+MAX_WBITS means read as gzip.
-	m_inflate_status = inflateInit2(&m_gzipstream, 16 + MAX_WBITS);
-	if(m_inflate_status != Z_OK)
-	{
-		m_error_occured = true;
-		emit errorOccurred();
-		reply->abort();
-		info.critical("ZLib", tr("Couldn't init zlibstream."));
-		return;
+		else
+		{
+			if(reply->error() != QNetworkReply::OperationCanceledError)
+				QMessageBox::critical(NULL, tr("Bundle"), tr("Error while getting Bundle (1).\n%1").arg(reply->errorString()));
+		}
 	}
 }
 
+void Bundle::processData(QNetworkReply *reply, qint64 bytes_available)
+{
+	if(bytes_available == 0)
+		return;
+
+	QByteArray input = reply->read(bytes_available);
+
+	if(mCurrentFileIsGzipped)
+	{
+		int res;
+
+		mZstream.next_in = (Bytef *)input.constData();
+		mZstream.avail_in = bytes_available;
+
+		do
+		{
+			uInt old_avail_out = mZstream.avail_out;
+			res = inflate(&mZstream, Z_SYNC_FLUSH);
+			if(res != Z_OK && res != Z_STREAM_END)
+			{
+				reply->abort();
+				QMessageBox::warning(NULL, "ZLib", QString("ReadyRead error (%1)\n%2").arg(res).arg(mZstream.msg));
+				return;
+			}
+
+			mCurrentFile->write((const char *)mBuffer, old_avail_out - mZstream.avail_out);
+			mZstream.avail_out = mBufferSize;
+			mZstream.next_out = mBuffer;
+		}
+		while(mZstream.avail_in > 0);
+
+		if(res == Z_STREAM_END)
+			nextFile();
+	}
+	else
+		mCurrentFile->write(input);
+}
 
 void Bundle::downloadFinished()
 {
 	QNetworkReply *reply = dynamic_cast<QNetworkReply *>(sender());
 	if(reply)
 	{
-		inflateEnd(&m_gzipstream);
-
-		if(reply->error())
+		if(reply->error() == QNetworkReply::NoError)
 		{
-			m_error_occured = true;
-			emit errorOccurred();
-			QString error = reply->errorString();
-			info.critical(tr("Download error"), error);
-			return;
+			qDebug() << "Download successful";
 		}
 		else
 		{
-			for(int i = 0; i < m_entry_file.count(); i++)
-			{
-				m_entry_file[i]->close();
-				delete m_entry_file[i];
-			}
-			m_entry_file.clear();
+			if(reply->error() != QNetworkReply::OperationCanceledError)
+				QMessageBox::critical(NULL, tr("Bundle"), tr("Error while getting Bundle (2).\n%1").arg(reply->errorString()));
+			reply->deleteLater();
+			return;
+		}
 
-			info.log(tr("Downloading"), tr("Done with %1").arg(m_checksum));
-			QByteArray streamdata = reply->readAll();
-			if(streamdata.count() != 0)
+		if(mCurrentFileIsGzipped)
+		{
+			int res = inflateEnd(&mZstream);
+			if(res != Z_OK && res != Z_STREAM_END)
 			{
-				m_error_occured = true;
-				emit errorOccurred();
-				info.critical("Download error", "Still data left!");
+				reply->abort();
+				QMessageBox::warning(NULL, "ZLib", QString("downloadFinished error (%1)\n%2").arg(res).arg(mZstream.msg));
 				return;
 			}
-
-			emit done();
 		}
+		mCurrentFile->close();
+		delete mCurrentFile;
+		mCurrentFile = NULL;
 
 		reply->deleteLater();
 	}
 }
 
-void Bundle::downloadProgress(qint64 value, qint64)
+void Bundle::downloadProgress(qint64 downloaded, qint64)
 {
-	emit downloadProgress(value - m_alreadydownloaded);
-	m_alreadydownloaded = value;
+	emit downloadProgress(downloaded - mBytesProgress);
+	mBytesProgress = downloaded;
 }
 
-void Bundle::readyRead()
+
+void Bundle::prepareZLib()
 {
-	if(m_error_occured)
-		return;
+	if(mBuffer == NULL)
+		mBuffer = new Bytef[mBufferSize];
 
-	QNetworkReply *reply = dynamic_cast<QNetworkReply *>(sender());
-	if(reply)
+	mZstream.next_out = mBuffer;
+	mZstream.avail_out = mBufferSize;
+	mZstream.next_in = Z_NULL;
+	mZstream.avail_in = 0;
+	mZstream.zalloc = Z_NULL;
+	mZstream.zfree = Z_NULL;
+	mZstream.opaque = Z_NULL;
+	
+	int res = inflateInit2(&mZstream, 16 + MAX_WBITS);
+	if(res != Z_OK)
 	{
-		if(globalabortflag)
-		{
-			reply->abort();
-			return;
-		}
-
-		info.log(tr("Data received"), tr("%1 bytes").arg(reply->bytesAvailable()), true);
-		do
-		{
-			if(m_current_entry_index >= m_entries.count())
-				break;
-
-			info.log(tr("Data"), tr("Requesting %1 (%2 %3))").arg(m_entries[m_current_entry_index].next_offset - m_alreadyread).arg(m_entries[m_current_entry_index].next_offset).arg(m_alreadyread), true);
-			QByteArray streamdata = reply->read(qMin<qint64>(m_entries[m_current_entry_index].next_offset - m_alreadyread, reply->bytesAvailable()));
-			if(streamdata.count() == 0)
-			{
-				m_error_occured = true;
-				emit errorOccurred();
-				reply->abort();
-				info.critical(tr("I/O error"), tr("Read zero bytes from buffer (%1)").arg(reply->errorString()));
-				break;
-			}
-			info.log(tr("Data"), tr("Got %1").arg(streamdata.count()), true);
-
-			QByteArray outputdata(8*1024, Qt::Uninitialized);
-
-			// If there is no checksumZ, then it's not gzipped.
-			if(m_entries[m_current_entry_index].checksumZ == "")
-			{
-				for(QList<QFile *>::iterator entryfile = m_entry_file.begin(); entryfile != m_entry_file.end(); ++entryfile)
-				{
-					qint64 really_written = (*entryfile)->write(streamdata);
-					if(really_written == -1)
-					{
-						m_error_occured = true;
-						emit errorOccurred();
-						reply->abort();
-						info.critical(tr("Write error"), tr("Error while writing to %1 (%2).").arg((*entryfile)->fileName()).arg((*entryfile)->errorString()));
-						return;
-					}
-				}
-				info.log(tr("Writing to file"), QString("(1) ") + tr("%1 bytes written to %2.").arg(streamdata.count()).arg(m_entry_file[0]->fileName()), true);
-				m_alreadyread += streamdata.count();
-
-				if(m_alreadyread == m_entries[m_current_entry_index].next_offset)
-					nextFile(reply);
-			}
-			else
-			{
-				m_gzipstream.next_in = (Bytef *)streamdata.data();
-				m_gzipstream.avail_in = streamdata.count();
-				m_gzipstream.next_out = (Bytef *)outputdata.data();
-				m_gzipstream.avail_out = outputdata.count();
-				do
-				{
-					m_inflate_status = inflate(&m_gzipstream, Z_SYNC_FLUSH);
-					if(m_inflate_status < 0)
-					{
-						m_error_occured = true;
-						emit errorOccurred();
-						reply->abort();
-						info.critical(tr("I/O error"), tr("Decompress error (%1) (bundle)").arg(m_inflate_status));
-						return;
-					}
-
-					if(m_gzipstream.avail_out == 0)
-					{
-						for(QList<QFile *>::iterator entryfile = m_entry_file.begin(); entryfile != m_entry_file.end(); ++entryfile)
-						{
-							qint64 really_written = (*entryfile)->write(outputdata);
-							if(really_written == -1)
-							{
-								m_error_occured = true;
-								emit errorOccurred();
-								reply->abort();
-								info.critical(tr("Write error"), tr("Error while writing to %1 (%2).").arg((*entryfile)->fileName()).arg((*entryfile)->errorString()));
-								return;
-							}
-						}
-						info.log("Writing to file", QString("(2) %1 bytes written to %2.").arg(outputdata.count()).arg(m_entry_file[0]->fileName()), true);
-						m_gzipstream.next_out = (Bytef *)outputdata.data();
-						m_gzipstream.avail_out = outputdata.count();
-					}
-				}
-				while(m_inflate_status == Z_OK && m_gzipstream.avail_in > 0);
-
-				outputdata.truncate(outputdata.count()-m_gzipstream.avail_out);
-				for(QList<QFile *>::iterator entryfile = m_entry_file.begin(); entryfile != m_entry_file.end(); ++entryfile)
-				{
-					qint64 really_written = (*entryfile)->write(outputdata);
-					if(really_written == -1)
-					{
-						m_error_occured = true;
-						emit errorOccurred();
-						reply->abort();
-						info.critical(tr("Write error"), tr("Error while writing to %1 (%2).").arg((*entryfile)->fileName()).arg((*entryfile)->errorString()));
-						return;
-					}
-				}
-				info.log("Writing to file", QString("(3) %1 bytes written to %2.").arg(outputdata.count()).arg(m_entry_file[0]->fileName()), true);
-				m_alreadyread += streamdata.count();
-
-				if(m_inflate_status == Z_STREAM_END)
-					nextFile(reply);
-				else if(m_inflate_status < 0)
-				{
-					m_error_occured = true;
-					emit errorOccurred();
-					reply->abort();
-					info.critical(tr("I/O error"), tr("Decompress error"));
-					return;
-				}
-			}
-		}
-		while(!reply->atEnd());
+		QMessageBox::critical(NULL, "ZLib", QString("prepareZLib error (%1)\n%2").arg(res).arg(mZstream.msg));
+		return;
 	}
 }
 
+void Bundle::prepareFile()
+{
+	// Create the necessary directories.
+	QFileInfo file_info(mInstallPath + "/" + mFiles[mFilesCurrentIndex].filename);
+	file_info.absoluteDir().mkpath(".");
+
+	mCurrentFile = new QFile(file_info.absoluteFilePath());
+	Q_ASSERT(mCurrentFile->open(QFile::WriteOnly));
+	if(mFiles[mFilesCurrentIndex].executable)
+		mCurrentFile->setPermissions(mCurrentFile->permissions() | QFile::ExeUser | QFile::ExeGroup | QFile::ExeOther);
+
+	mCurrentFileIsGzipped = (mFiles[mFilesCurrentIndex].sizeZ > 0);
+}
+
+void Bundle::nextFile()
+{
+	mFilesCurrentIndex++;
+
+	if(mFilesCurrentIndex < mFiles.count())
+	{
+		mCurrentFile->close();
+		delete mCurrentFile;
+		mCurrentFile = NULL;
+		if(mCurrentFileIsGzipped)
+		{
+			int res = inflateEnd(&mZstream);
+			if(res != Z_OK && res != Z_STREAM_END)
+			{
+//				reply->abort();
+				QMessageBox::warning(NULL, "ZLib", QString("downloadFinished error (%1)\n%2").arg(res).arg(mZstream.msg));
+				return;
+			}
+		}
+
+		prepareFile();
+		if(mCurrentFileIsGzipped)
+			prepareZLib();
+	}
+}
+
+bool Bundle::createSymbolicLink(const QString& from, const QString& to)
+{
+	// This is the same file, so make a symbolic link, but first
+	// find the relative path.
+	QStringList path1 = from.split(QRegExp("[\\\\/]"));
+	QStringList path2 = to.split(QRegExp("[\\\\/]"));
+	int i;
+	for(i = 0; i < path2.count() - 1; i++)
+	{
+		if(path1[i] == path2[i])
+		{
+			path1[i] = "";
+			path2[i] = "";
+		}
+		else
+			break;
+	}
+	for(; i < path2.count() - 1; i++)
+	{
+		path1.push_front("..");
+	}
+
+	for(int i = path1.count() - 1; i >= 0; i--)
+	{
+		if(path1[i].isEmpty())
+			path1.removeAt(i);
+	}
+
+#if defined(_WIN32)
+	BOOLEAN res = CreateSymbolicLink((mInstallPath + "/" + to).toStdString().c_str(), path1.join("/").toStdString().c_str(), 0);
+	if(!res)
+	{
+		qDebug() << GetLastError();
+		return false;
+	}
+#else
+	int res = symlink(path1.join("/").toStdString().c_str(), (mInstallPath + "/" + to).toStdString().c_str());
+	if(res != 0)
+	{
+		qDebug() << strerror(errno);
+		return false;
+	}
+#endif
+
+	return true;
+}
+
+bool Bundle::createEmptyFile(const QString& file_name)
+{
+	QFileInfo(mInstallPath + '/' + file_name).absoluteDir().mkpath(".");
+	QFile file(file_name);
+	if(file.open(QFile::WriteOnly))
+	{
+		file.close();
+		return true;
+	}
+	else
+		return false;
+}
 
 #include "bundle.moc"

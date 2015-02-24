@@ -10,11 +10,11 @@ BEGIN
     BEGIN
       VALUE "CompanyName", "DeathByDenim"
       VALUE "FileDescription", "Alternative launcher for Planetary Annihilation"
-      VALUE "FileVersion", "0.4"
+      VALUE "FileVersion", "0.4.1"
       VALUE "InternalName", "paalternativelauncher"
       VALUE "OriginalFilename", "paalternativelauncher.exe"
       VALUE "ProductName", "PA Alternative Launcher"
-      VALUE "ProductVersion", "0.4"
+      VALUE "ProductVersion", "0.4.1"
     END
   END
 

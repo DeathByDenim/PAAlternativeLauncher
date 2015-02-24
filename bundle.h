@@ -2,83 +2,74 @@
 #define BUNDLE_H
 
 #include <QObject>
-#include <QUrl>
-#include <QList>
-#include <QVariant>
-#include <QFile>
-#include <QStringList>
+#include <QFuture>
 #include <zlib.h>
 
-class QWidget;
+class QFile;
 class QNetworkAccessManager;
 class QNetworkReply;
+class QJsonObject;
+class Patcher;
 
 class Bundle : public QObject
 {
-	Q_OBJECT
+    Q_OBJECT
 
 public:
-	Bundle(QString installpath, QVariant bundlevariant, QString downloadurl, QString titlefolder, QString authsuffix, QNetworkAccessManager* networkaccessmanager, QWidget* parent);
-	~Bundle();
-	
-	enum verification_state_t
-	{
-		unknown,
-		good,
-		bad
-	};
+    Bundle(QString install_path, Patcher* patcher);
+    ~Bundle();
 
-	void verifyAndMaybeDownload();
-	int numEntries() {return m_entries.count();}
-	verification_state_t state() {return m_verification_state;}
-	size_t size() {return m_size;}
+	void verify(QJsonObject* array);
+	QString checksum() {return mChecksum;}
+	qint64 totalSize() {return mTotalSize;}
+	void downloadAndExtract(QNetworkAccessManager* network_access_manager, QString download_url);
 
-	struct entry_t
-	{
-		size_t sizeZ;
-		size_t offset;
-		size_t size;
-		QStringList fullfilename;
-		QString checksumZ;
-		QString checksum;
-		bool executable;
-
-		int next_offset;
-	};
 private:
+	struct File
+	{
+		QString filename;
+		QString checksum;
+		ulong offset;
+		ulong size;
+		ulong sizeZ;
+		bool executable;
+		bool verified;
+		QByteArray *data_on_disk;
+		QFuture<bool> future;
+	};
+	ulong mTotalSize;
 
-	QWidget *m_parent;
-	QString m_checksum;
-	size_t m_size;
-	QUrl m_url;
-	QList<entry_t> m_entries;
-	z_stream m_gzipstream;
-	int m_inflate_status;
-	QNetworkAccessManager *m_network_access_manager;
-	verification_state_t m_verification_state;
-	QList<QFile *> m_entry_file;
-	int m_current_entry_index;
-	int m_alreadyread;
-	qint64 m_alreadydownloaded;
-	bool m_error_occured;
+	QList<File> mFiles;
+	QString mInstallPath;
+	Patcher *mPatcher;
+	bool mNeedsDownloading;
+	QString mChecksum;
+	z_stream mZstream;
+	const qint64 mBufferSize;
+	Bytef * mBuffer;
+	qint64 mBytesDownloaded;
+	qint64 mBytesProgress;
+	QFile *mCurrentFile;
+	bool mCurrentFileIsGzipped;
+	int mFilesCurrentIndex;
 
-	QFile m_cache_file;
-
-	static bool verifyEntry(entry_t entry);
-	void nextFile(QNetworkReply *reply);
+	static bool verifySHA1(Bundle::File file_entry, bool *downloading);
+	void prepareZLib();
+    void prepareFile();
+    void nextFile();
+    void processData(QNetworkReply* reply, qint64 bytes_available);
+	bool createSymbolicLink(const QString& from, const QString& to);
+	bool createEmptyFile(const QString& file_name);
 
 private slots:
-	void verifyFinished();
 	void downloadFinished();
-	void downloadProgress(qint64 value, qint64);
-	void readyRead();
-	void download();
+    void downloadReadyRead();
+    void downloadProgress(qint64,qint64);
 
 signals:
-	void verifyDone(size_t bytes_to_download);
+	void downloadMe();
 	void downloadProgress(qint64);
-	void errorOccurred();
-	void done();
+	void verifyDone();
 };
 
 #endif // BUNDLE_H

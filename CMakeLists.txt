@@ -1,35 +1,25 @@
 project(paalternativelauncher)
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.11)
 
-find_package(Qt4 COMPONENTS QtCore QtGui QtNetwork REQUIRED)
+
+# Tell CMake to run moc when necessary:
+set(CMAKE_AUTOMOC ON)
+# As moc files are generated in the binary dir, tell CMake
+# to always look for includes there:
+set(CMAKE_INCLUDE_CURRENT_DIR ON)
+
+
+#find_package(Qt5 REQUIRED Widgets Network)
+find_package(Qt5Widgets REQUIRED)
+find_package(Qt5Network REQUIRED)
+find_package(Qt5Concurrent REQUIRED)
 find_package(ZLIB REQUIRED)
-find_package(QJSON REQUIRED)
 
-include_directories(${QT_INCLUDES} ${CMAKE_CURRENT_BINARY_DIR} ${ZLIB_INCLUDE_DIR} ${QJSON_INCLUDE_DIR})
+include_directories(${Qt5Core_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR} ${ZLIB_INCLUDE_DIR})
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+set(paalternativelauncher_SRCS bundle.cpp patcher.cpp paalternativelauncher.cpp main.cpp information.cpp advanceddialog.cpp)
+qt5_add_resources(paalternativelauncher_RCC_SRCS paalternativelauncher.qrc)
 
-set(paalternativelauncher_SRCS information.cpp advanceddialog.cpp bundle.cpp sha1.cpp patcher.cpp paalternativelauncher.cpp main.cpp)
+add_executable(paalternativelauncher ${paalternativelauncher_SRCS} ${paalternativelauncher_RCC_SRCS})
 
-set(RES_FILES "")
-if(WIN32)
-	if(MINGW)
-		set(RES_FILES "paalternativelauncher.rc")
-		set(CMAKE_RC_COMPILER_INIT windres)
-		ENABLE_LANGUAGE(RC)
-		SET(CMAKE_RC_COMPILE_OBJECT
-		"<CMAKE_RC_COMPILER> <FLAGS> -O coff <DEFINES> -i <SOURCE> -o <OBJECT>")
-	endif()
-endif()
-
-qt4_automoc(${paalternativelauncher_SRCS})
-
-QT4_ADD_RESOURCES(paalternativelauncher_RCC_SRCS paalternativelauncher.qrc)
-
-add_executable(paalternativelauncher ${paalternativelauncher_SRCS} ${paalternativelauncher_RCC_SRCS} ${RES_FILES})
-if(WIN32)
-	target_link_libraries(paalternativelauncher ${QT_QTNETWORK_LIBRARIES} ${QT_QTGUI_LIBRARY} ${QT_QTCORE_LIBRARY} ${ZLIB_LIBRARY} ${QJSON_LIBRARIES} -mwindows -lws2_32 -ljpeg -lpng -ltiff -llzma -lmng -lz -limm32 -llcms -lwinmm -lssl -lcrypto)
-else()
-	target_link_libraries(paalternativelauncher ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTNETWORK_LIBRARIES} ${ZLIB_LIBRARY} ${QJSON_LIBRARIES})
-endif()
-install(TARGETS paalternativelauncher RUNTIME DESTINATION bin)
+target_link_libraries(paalternativelauncher Qt5::Widgets Qt5::Network Qt5::Concurrent ${ZLIB_LIBRARY})

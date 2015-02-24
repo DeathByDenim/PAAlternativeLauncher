@@ -2,74 +2,87 @@
 #define PAAlternativeLauncher_H
 
 #include <QMainWindow>
-#include <QList>
-#include "patcher.h"
+#include <QNetworkAccessManager>
+#include <zlib.h>
+#include <QBuffer>
+#include <QLabel>
+#include <QProgressBar>
+#include <QLineEdit>
+#include <QComboBox>
+#include <QTextBrowser>
+#include <QPushButton>
+#include <QMap>
+#include <QThread>
 #include "advanceddialog.h"
 
-class QShowEvent;
-class QTextBrowser;
-class QProgressBar;
-class QCheckBox;
-class QLineEdit;
-class QLabel;
-class QNetworkAccessManager;
-class QNetworkReply;
-class QShowEvent;
-class QCloseEvent;
-class QComboBox;
+class Patcher;
 
 class PAAlternativeLauncher : public QMainWindow
 {
 Q_OBJECT
 public:
-	PAAlternativeLauncher();
-	virtual ~PAAlternativeLauncher();
-
+    PAAlternativeLauncher();
+    virtual ~PAAlternativeLauncher();
+	
 private:
-	QProgressBar *m_patch_progressbar;
-	QLabel *m_patch_label;
-	QNetworkAccessManager *m_network_access_manager;
-	QString m_session_ticket;
-	QWidget *m_login_widget;
-	QWidget *m_download_widget;
-	QWidget *m_wait_widget;
-	QTextBrowser *m_patch_text_browser;
-	QComboBox *m_streams_combo_box;
-	QLineEdit *m_username_lineedit;
-	QLineEdit *m_password_lineedit;
-	Patcher m_patcher;
-	const QString m_platform;
-	QLineEdit* m_installPathLineEdit;
-	QString m_extraParameters;
-	QMap<QString,QString> m_stream_news;
-	QMap<QString,bool> m_requires_update;
-	AdvancedDialog::optimus_t m_use_optimus;
-	QLabel* m_update_available_label;
-	QPushButton* m_download_button;
+	enum EState
+	{
+		login_state,
+		wait_state,
+		download_state
+	};
 
-	QWidget *createLoginWidget(QWidget* parent);
-	QWidget *createDownloadWidget(QWidget* parent);
-	QWidget *createWaitWidget(QWidget *parent);
-	QString decodeLoginData(const QByteArray& data);
-	void checkForUpdates(QStringList streamnames);
-	quint64 getFreeDiskspaceInMB(QString directory);
+	QNetworkAccessManager *mNetworkAccessManager;
+	const QString mPlatform;
+	QString mSessionTicket;
+	z_stream mZstream;
+	const qint64 mBufferSize;
+	Bytef * mBuffer;
+	QBuffer mManifestJson;
+	QWidget * mLoginWidget;
+	QWidget * mDownloadWidget;
+	QWidget * mWaitWidget;
+	QLabel * mPatchLabel;
+	QProgressBar * mPatchProgressbar;
+	QLineEdit * mUserNameLineEdit;
+	QLineEdit * mPasswordLineEdit;
+	QComboBox * mStreamsComboBox;
+	QLabel * mUpdateAvailableLabel;
+	QTextBrowser * mPatchTextBrowser;
+	QLineEdit * mInstallPathLineEdit;
+	QPushButton * mDownloadButton;
+	QMap<QString, QString> mStreamNews;
+	Patcher *mPatcher;
+	QString mExtraParameters;
+	AdvancedDialog::optimus_t mUseOptimus;
+	QThread mPatcherThread;
 
-protected:
-	void closeEvent(QCloseEvent *event);
-	void showEvent(QShowEvent *event);
+	void prepareZLib();
+	QWidget * createLoginWidget(QWidget * parent);
+	QWidget * createDownloadWidget(QWidget * parent);
+	QWidget * createWaitWidget(QWidget * parent);
+	void setState(EState state);
+	QString currentInstalledVersion();
 
 private slots:
-	void loginPushButtonClicked(bool);
-	void downloadPushButtonClicked(bool);
-	void installPathButtonClicked(bool);
-	void launchPushButtonClicked(bool);
+    void loginPushButtonClicked(bool);
+    void authenticateFinished();
+    void streamsFinished();
+    void manifestFinished();
+    void manifestReadyRead();
+    void passwordLineEditReturnPressed();
+    void streamsComboBoxCurrentIndexChanged(int);
+    void streamNewsReplyFinished();
+    void installPathButtonClicked(bool);
+    void downloadPushButtonClicked(bool);
 	void launchOfflinePushButtonClicked(bool);
-	void advancedPushButtonClicked(bool);
-	void replyReceived(QNetworkReply *reply);
+	void patcherError(QString error);
+	void patcherDone();
 	void patcherProgress(int percentage);
-	void patcherState(QString state);
-	void streamsCurrentIndexChanged(QString streamname);
-	void lineEditReturnPressed();
+    void advancedPushButtonClicked(bool);
+    void launchPushButtonClicked(bool);
+    void manifestDownloadProgress(qint64,qint64);
+    void patcherStateChange(QString state);
 };
 
 #endif // PAAlternativeLauncher_H

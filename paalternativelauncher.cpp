@@ -1,59 +1,50 @@
-#define VERSION "0.4"
-
 #include "paalternativelauncher.h"
-#include "advanceddialog.h"
-#include "information.h"
 
-#include <QLabel>
-#include <QHBoxLayout>
-#include <QVBoxLayout>
-#include <QImage>
-#include <QScrollArea>
-#include <QProgressBar>
-#include <QMovie>
 #include <QPushButton>
-#include <QComboBox>
-#include <QShowEvent>
-#include <QResizeEvent>
-#include <QFormLayout>
-#include <QLineEdit>
-#include <QCheckBox>
-#include <QDialogButtonBox>
-#include <QFileDialog>
-#include <QTextBrowser>
-#include <QMessageBox>
 #include <QNetworkAccessManager>
 #include <QNetworkRequest>
 #include <QNetworkReply>
+#include <QMessageBox>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QFormLayout>
+#include <QPalette>
+#include <QLabel>
+#include <QProgressBar>
+#include <QLineEdit>
+#include <QComboBox>
+#include <QTextBrowser>
+#include <QPushButton>
+#include <QDialogButtonBox>
+#include <QMovie>
 #include <QSettings>
+#include <QFileDialog>
 #include <QProcess>
-#include <QDate>
-#if defined(linux) || defined(__APPLE__)
-#  include <sys/statvfs.h>
-#  include <sys/errno.h>
-#elif defined(_WIN32)
-#  include <windows.h>
-#  define QJSON_STATIC
-#endif
-#include <qjson/parser.h>
-#include <climits>
 
-// If this is set to true, then the program is quitting.
-bool globalabortflag = false;
+//#include <QDebug>
+#include <QFile>
+#include <zlib.h>
+#include "information.h"
+#include "version.h"
+#include "patcher.h"
+#include "advanceddialog.h"
+
 
 PAAlternativeLauncher::PAAlternativeLauncher()
- : m_network_access_manager(new QNetworkAccessManager(this))
- , m_patcher(this)
+ : mNetworkAccessManager(new QNetworkAccessManager(NULL))
 #if defined(linux)
- , m_platform("Linux")
+ , mPlatform("Linux")
 #elif defined(_WIN32)
- , m_platform("Windows")
+ , mPlatform("Windows")
 #elif defined(__APPLE__)
- , m_platform("OSX")
+ , mPlatform("OSX")
 #else
 # error Not a supported os
 #endif
- , m_download_button(NULL)
+ , mBufferSize(1024*1024), mBuffer(NULL), mPatcher(NULL)
 {
 	setWindowIcon(QIcon(":/img/icon.png"));
 	setWindowTitle("PA Alternative Launcher");
@@ -64,482 +55,360 @@ PAAlternativeLauncher::PAAlternativeLauncher()
  	palette->setBrush(QPalette::Background,*(new QBrush(*(new QPixmap(":/img/img_bground_galaxy_01.png")))));
  	setPalette(*palette);
 
-	QWidget *mainWidget = new QWidget(this);
-	QVBoxLayout *mainLayout = new QVBoxLayout(mainWidget);
+	QWidget *main_widget = new QWidget(this);
+	QVBoxLayout *main_layout = new QVBoxLayout(main_widget);
 	
-	QLabel *disclaimerLabel = new QLabel(tr("This is an UNOFFICIAL launcher and not connected to Uber in any way."), mainWidget);
-	disclaimerLabel->setStyleSheet("QLabel {color: red; font-weight: bold;}");
-	disclaimerLabel->setAlignment(Qt::AlignCenter);
-	disclaimerLabel->setAutoFillBackground(true);
-	disclaimerLabel->setBackgroundRole(QPalette::Dark);
-	mainLayout->addWidget(disclaimerLabel);
+	QLabel *disclaimer_label = new QLabel(tr("This is an UNOFFICIAL launcher and not connected to Uber in any way."), main_widget);
+	disclaimer_label->setStyleSheet("QLabel {color: red; font-weight: bold;}");
+	disclaimer_label->setAlignment(Qt::AlignCenter);
+	disclaimer_label->setAutoFillBackground(true);
+	disclaimer_label->setBackgroundRole(QPalette::Dark);
+	main_layout->addWidget(disclaimer_label);
 
-	QLabel *headerLabel = new QLabel(mainWidget);
-	headerLabel->setPixmap(QPixmap(":/img/img_pa_logo_start_rest.png"));
-	headerLabel->setAlignment(Qt::AlignCenter);
-	mainLayout->addWidget(headerLabel);
+	QLabel *header_label = new QLabel(main_widget);
+	header_label->setPixmap(QPixmap(":/img/img_pa_logo_start_rest.png"));
+	header_label->setAlignment(Qt::AlignCenter);
+	main_layout->addWidget(header_label);
 
-	QWidget *centreWidget = new QWidget(mainWidget);
-	QHBoxLayout *centreLayout = new QHBoxLayout(centreWidget);
+	QWidget *centre_widget = new QWidget(main_widget);
+	QHBoxLayout *centre_layout = new QHBoxLayout(centre_widget);
 
-	QLabel *commanderLabel = new QLabel(centreWidget);
-	commanderLabel->setPixmap(QPixmap(":img/img_imperial_invictus.png").scaled(10, 400, Qt::KeepAspectRatioByExpanding));
-	centreLayout->addWidget(commanderLabel);
+	QLabel *commander_label = new QLabel(centre_widget);
+	commander_label->setPixmap(QPixmap(":img/img_imperial_invictus.png").scaled(10, 400, Qt::KeepAspectRatioByExpanding));
+	centre_layout->addWidget(commander_label);
 
-	m_login_widget = createLoginWidget(centreWidget);
-	m_download_widget = createDownloadWidget(centreWidget);
-	m_download_widget->setVisible(false);
-	m_wait_widget = createWaitWidget(centreWidget);
-	m_wait_widget->setVisible(false);
-	centreLayout->addWidget(m_login_widget);
-	centreLayout->addWidget(m_download_widget);
-	centreLayout->addWidget(m_wait_widget);
+	mLoginWidget = createLoginWidget(centre_widget);
+	mDownloadWidget = createDownloadWidget(centre_widget);
+	mDownloadWidget->setVisible(false);
+	mWaitWidget = createWaitWidget(centre_widget);
+	mWaitWidget->setVisible(false);
+	centre_layout->addWidget(mLoginWidget);
+	centre_layout->addWidget(mDownloadWidget);
+	centre_layout->addWidget(mWaitWidget);
 
-	mainLayout->addWidget(centreWidget);
+	main_layout->addWidget(centre_widget);
 
-	m_patch_label = new QLabel(mainWidget);
-	m_patch_label->setStyleSheet("QLabel {color: white; font-weight: bold}");
-	m_patch_label->setAlignment(Qt::AlignCenter);
-	connect(&m_patcher, SIGNAL(state(QString)), SLOT(patcherState(QString)));
-	mainLayout->addWidget(m_patch_label);
+	mPatchLabel = new QLabel(main_widget);
+	mPatchLabel->setStyleSheet("QLabel {color: white; font-weight: bold}");
+	mPatchLabel->setAlignment(Qt::AlignCenter);
+//	connect(&m_patcher, SIGNAL(state(QString)), SLOT(patcherState(QString)));
+	main_layout->addWidget(mPatchLabel);
 
-	m_patch_progressbar = new QProgressBar(mainWidget);
-	m_patch_progressbar->setMinimum(0);
-	m_patch_progressbar->setMaximum(100);
-	connect(&m_patcher, SIGNAL(progress(int)), SLOT(patcherProgress(int)));
-	mainLayout->addWidget(m_patch_progressbar);
+	mPatchProgressbar = new QProgressBar(main_widget);
+	mPatchProgressbar->setMinimum(0);
+	mPatchProgressbar->setMaximum(100);
+//	connect(&m_patcher, SIGNAL(progress(int)), SLOT(patcherProgress(int)));
+	main_layout->addWidget(mPatchProgressbar);
 
-	QLabel *disclaimerLabel2 = new QLabel(tr("This is an UNOFFICIAL launcher and not connected to Uber in any way."), mainWidget);
-	disclaimerLabel2->setStyleSheet("QLabel {color: red; font-weight: bold;}");
-	disclaimerLabel2->setAlignment(Qt::AlignCenter);
-	disclaimerLabel2->setAutoFillBackground(true);
-	disclaimerLabel2->setBackgroundRole(QPalette::Dark);
-	mainLayout->addWidget(disclaimerLabel2);
+	QLabel *disclaimer_label2 = new QLabel(tr("This is an UNOFFICIAL launcher and not connected to Uber in any way."), main_widget);
+	disclaimer_label2->setStyleSheet("QLabel {color: red; font-weight: bold;}");
+	disclaimer_label2->setAlignment(Qt::AlignCenter);
+	disclaimer_label2->setAutoFillBackground(true);
+	disclaimer_label2->setBackgroundRole(QPalette::Dark);
+	main_layout->addWidget(disclaimer_label2);
 
-	QWidget *aboutWidget = new QWidget(mainWidget);
-	QHBoxLayout *aboutLayout = new QHBoxLayout(aboutWidget);
+	QWidget *about_widget = new QWidget(main_widget);
+	QHBoxLayout *about_layout = new QHBoxLayout(about_widget);
 
-	QLabel *createdByLabel = new QLabel(tr("Created by") + " DeathByDenim", aboutWidget);
-	createdByLabel->setStyleSheet("QLabel {color: white}");
-	aboutLayout->addWidget(createdByLabel);
-	QLabel *blackmageLabel = new QLabel(aboutWidget);
-	blackmageLabel->setPixmap(QPixmap(":img/blackmage.png"));
-	blackmageLabel->setMaximumSize(16, 16);
-	aboutLayout->addWidget(blackmageLabel);
-	aboutLayout->addStretch();
-	QLabel *versionLabel = new QLabel(tr("Version") + " " VERSION, aboutWidget);
-	versionLabel->setStyleSheet("QLabel {color: white}");
-	aboutLayout->addWidget(versionLabel);
+	QLabel *created_by_label = new QLabel(tr("Created by") + " DeathByDenim", about_widget);
+	created_by_label->setStyleSheet("QLabel {color: white}");
+	about_layout->addWidget(created_by_label);
+	QLabel *blackmage_label = new QLabel(about_widget);
+	blackmage_label->setPixmap(QPixmap(":img/blackmage.png"));
+	blackmage_label->setMaximumSize(16, 16);
+	about_layout->addWidget(blackmage_label);
+	about_layout->addStretch();
+	QLabel *version_label = new QLabel(tr("Version") + " " VERSION, about_widget);
+	version_label->setStyleSheet("QLabel {color: white}");
+	about_layout->addWidget(version_label);
 
-	mainLayout->addWidget(aboutWidget);
+	main_layout->addWidget(about_widget);
 
-	setCentralWidget(mainWidget);
+	setCentralWidget(main_widget);
 
-	m_network_access_manager = new QNetworkAccessManager(this);
-	connect(m_network_access_manager, SIGNAL(finished(QNetworkReply*)), SLOT(replyReceived(QNetworkReply*)));
 
-	QSettings settings(QSettings::UserScope, "DeathByDenim", "PAAlternativeLauncher");
+	QSettings settings;
 	restoreGeometry(settings.value("mainwindow/geometry").toByteArray());
 
-	m_session_ticket = settings.value("login/sessionticket").toString();
-	if(!m_session_ticket.isEmpty())
+	mSessionTicket = settings.value("login/sessionticket").toString();
+	if(!mSessionTicket.isEmpty())
 	{
-		m_login_widget->setVisible(false);
-		m_download_widget->setVisible(false);
-		m_wait_widget->setVisible(true);
+		setState(wait_state);
 
-		QNetworkRequest request(QUrl("https://uberent.com/Launcher/ListStreams?Platform=" + m_platform));
-		request.setRawHeader("X-Authorization", m_session_ticket.toAscii());
-		request.setAttribute(QNetworkRequest::User, QVariant("streams"));
-		m_network_access_manager->get(request);
+		QNetworkRequest request(QUrl("https://uberent.com/Launcher/ListStreams?Platform=" + mPlatform));
+		request.setRawHeader("X-Authorization", mSessionTicket.toUtf8());
+		request.setRawHeader("User-Agent", QString("PAAlternativeLauncher/%1").arg(VERSION).toUtf8());
+		QNetworkReply *reply = mNetworkAccessManager->get(request);
+		connect(reply, SIGNAL(finished()), SLOT(streamsFinished()));
 	}
 
-	if(m_username_lineedit->text().isEmpty())
-		m_username_lineedit->setFocus();
+	if(mUserNameLineEdit->text().isEmpty())
+		mUserNameLineEdit->setFocus();
 	else
-		m_password_lineedit->setFocus();
+		mPasswordLineEdit->setFocus();
 }
 
 PAAlternativeLauncher::~PAAlternativeLauncher()
 {
-	globalabortflag = true;
 	info.log("Stopping launcher", QDateTime::currentDateTime().toString());
+
+	mPatcherThread.exit();
+	mPatcherThread.wait(1000);
+
+	if(mBuffer)
+		delete[] mBuffer;
 }
+
+
+/* Create the various widgets that can be on the right side. These are the login window, where
+ * the users enter their username/password, the logging in widget that shows the spinning thingy,
+ * and the news screen if the login was successful.
+ */
 
 QWidget* PAAlternativeLauncher::createLoginWidget(QWidget *parent)
 {
-	QWidget *mainWidget = new QWidget(parent);
-	QPalette palette = mainWidget->palette();
+	QWidget *main_widget = new QWidget(parent);
+	QPalette palette = main_widget->palette();
 	palette.setColor(QPalette::WindowText, Qt::white);
-	mainWidget->setPalette(palette);
-	QFormLayout *mainLayout = new QFormLayout(mainWidget);
-	mainWidget->setLayout(mainLayout);
+	main_widget->setPalette(palette);
+	QFormLayout *main_layout = new QFormLayout(main_widget);
+	main_widget->setLayout(main_layout);
 
-	QLabel *loginLabel = new QLabel(tr("LOGIN"), mainWidget);
-	QFont font = loginLabel->font();
+	QLabel *login_label = new QLabel(tr("LOGIN"), main_widget);
+	QFont font = login_label->font();
 	font.setBold(true);
 	font.setPointSizeF(3*font.pointSizeF());
-	loginLabel->setFont(font);
-	loginLabel->setAlignment(Qt::AlignCenter);
-	mainLayout->addRow(loginLabel);
+	login_label->setFont(font);
+	login_label->setAlignment(Qt::AlignCenter);
+	main_layout->addRow(login_label);
 
-	m_username_lineedit = new QLineEdit(mainWidget);
-	mainLayout->addRow(tr("Uber ID"), m_username_lineedit);
+	mUserNameLineEdit = new QLineEdit(main_widget);
+	main_layout->addRow(tr("Uber ID"), mUserNameLineEdit);
 
-	m_password_lineedit = new QLineEdit(mainWidget);
-	m_password_lineedit->setEchoMode(QLineEdit::Password);
-	connect(m_password_lineedit, SIGNAL(returnPressed()), SLOT(lineEditReturnPressed()));
-	mainLayout->addRow(tr("Password"), m_password_lineedit);
+	mPasswordLineEdit = new QLineEdit(main_widget);
+	mPasswordLineEdit->setEchoMode(QLineEdit::Password);
+	connect(mPasswordLineEdit, SIGNAL(returnPressed()), SLOT(passwordLineEditReturnPressed()));
+	main_layout->addRow(tr("Password"), mPasswordLineEdit);
 
-	QPushButton *loginButton = new QPushButton(tr("Login"), mainWidget);
-	mainLayout->addRow(loginButton);
-	connect(loginButton, SIGNAL(clicked(bool)), SLOT(loginPushButtonClicked(bool)));
+	QPushButton *login_button = new QPushButton(tr("Login"), main_widget);
+	main_layout->addRow(login_button);
+	connect(login_button, SIGNAL(clicked(bool)), SLOT(loginPushButtonClicked(bool)));
 
-	QPushButton *launchOfflineButton = new QPushButton(tr("Launch offline (no password needed)"), mainWidget);
-	mainLayout->addRow(launchOfflineButton);
-	connect(launchOfflineButton, SIGNAL(clicked(bool)), SLOT(launchOfflinePushButtonClicked(bool)));
+	QPushButton *launch_offline_button = new QPushButton(tr("Launch offline (no password needed)"), main_widget);
+	main_layout->addRow(launch_offline_button);
+	connect(launch_offline_button, SIGNAL(clicked(bool)), SLOT(launchOfflinePushButtonClicked(bool)));
 
-	QSettings settings(QSettings::UserScope, "DeathByDenim", "PAAlternativeLauncher");
-	m_username_lineedit->setText(settings.value("login/username").toString());
+	QSettings settings;
+	mUserNameLineEdit->setText(settings.value("login/username").toString());
 
-	return mainWidget;
+	return main_widget;
 }
 
 QWidget* PAAlternativeLauncher::createDownloadWidget(QWidget* parent)
 {
-	QWidget *mainWidget = new QWidget(parent);
-	QPalette palette = mainWidget->palette();
+	QWidget *main_widget = new QWidget(parent);
+	QPalette palette = main_widget->palette();
 	palette.setColor(QPalette::WindowText, Qt::white);
-	mainWidget->setPalette(palette);
-	QVBoxLayout *mainLayout = new QVBoxLayout(mainWidget);
-	mainWidget->setLayout(mainLayout);
+	main_widget->setPalette(palette);
+	QVBoxLayout *main_layout = new QVBoxLayout(main_widget);
+	main_widget->setLayout(main_layout);
 
-	QWidget *streamWidget = new QWidget(mainWidget);
-	QHBoxLayout *streamLayout = new QHBoxLayout(streamWidget);
-	QLabel *streamsLabel = new QLabel(tr("Stream"), streamWidget);
-	streamsLabel->setPalette(palette);
-	streamLayout->addWidget(streamsLabel);
-	m_streams_combo_box = new QComboBox(streamWidget);
-	streamLayout->addWidget(m_streams_combo_box);
-	connect(m_streams_combo_box, SIGNAL(currentIndexChanged(QString)), SLOT(streamsCurrentIndexChanged(QString)));
-	streamLayout->addStretch();
-	m_update_available_label = new QLabel("", streamWidget);
-	m_update_available_label->setStyleSheet("QLabel {font-weight: bold; color: white}");
-	m_update_available_label->setPalette(palette);
-	streamLayout->addWidget(m_update_available_label);
-	mainLayout->addWidget(streamWidget);
+	QWidget *stream_widget = new QWidget(main_widget);
+	QHBoxLayout *stream_layout = new QHBoxLayout(stream_widget);
+	QLabel *streams_label = new QLabel(tr("Stream"), stream_widget);
+	streams_label->setPalette(palette);
+	stream_layout->addWidget(streams_label);
+	mStreamsComboBox = new QComboBox(stream_widget);
+	stream_layout->addWidget(mStreamsComboBox);
+	connect(mStreamsComboBox, SIGNAL(currentIndexChanged(int)), SLOT(streamsComboBoxCurrentIndexChanged(int)));
+	stream_layout->addStretch();
+	mUpdateAvailableLabel = new QLabel("", stream_widget);
+	mUpdateAvailableLabel->setStyleSheet("QLabel {font-weight: bold; color: white}");
+	mUpdateAvailableLabel->setPalette(palette);
+	stream_layout->addWidget(mUpdateAvailableLabel);
+	main_layout->addWidget(stream_widget);
 
-	m_patch_text_browser = new QTextBrowser(mainWidget);
-	mainLayout->addWidget(m_patch_text_browser);
+	mPatchTextBrowser = new QTextBrowser(main_widget);
+	main_layout->addWidget(mPatchTextBrowser);
 
-	QWidget *installPathWidget = new QWidget(mainWidget);
-	QHBoxLayout *installPathLayout = new QHBoxLayout(installPathWidget);
+	QWidget *install_path_widget = new QWidget(main_widget);
+	QHBoxLayout *install_path_layout = new QHBoxLayout(install_path_widget);
 
-	m_installPathLineEdit = new QLineEdit(installPathWidget);
-	installPathLayout->addWidget(m_installPathLineEdit);
+	mInstallPathLineEdit = new QLineEdit(install_path_widget);
+	install_path_layout->addWidget(mInstallPathLineEdit);
 
-	QPushButton *installPathPushButton = new QPushButton(style()->standardIcon(QStyle::SP_DirOpenIcon), "", installPathWidget);
-	installPathPushButton->setFlat(true);
-	connect(installPathPushButton, SIGNAL(clicked(bool)), SLOT(installPathButtonClicked(bool)));
-	installPathLayout->addWidget(installPathPushButton);
-	mainLayout->addWidget(installPathWidget);
+	QPushButton *install_path_push_button = new QPushButton(style()->standardIcon(QStyle::SP_DirOpenIcon), "", install_path_widget);
+	install_path_push_button->setFlat(true);
+	connect(install_path_push_button, SIGNAL(clicked(bool)), SLOT(installPathButtonClicked(bool)));
+	install_path_layout->addWidget(install_path_push_button);
+	main_layout->addWidget(install_path_widget);
 
-	QDialogButtonBox *buttonbox = new QDialogButtonBox(mainWidget);
-	QPushButton *launchButton = new QPushButton(tr("&Launch PA"), buttonbox);
-	connect(launchButton, SIGNAL(clicked(bool)), SLOT(launchPushButtonClicked(bool)));
-	buttonbox->addButton(launchButton, QDialogButtonBox::AcceptRole);
-	QPushButton *advancedButton = new QPushButton(tr("&Advanced"), buttonbox);
-	connect(advancedButton, SIGNAL(clicked(bool)), SLOT(advancedPushButtonClicked(bool)));
-	buttonbox->addButton(advancedButton, QDialogButtonBox::NoRole);
-	m_download_button = new QPushButton(tr("&Download and install"), buttonbox);
-	connect(m_download_button, SIGNAL(clicked(bool)), SLOT(downloadPushButtonClicked(bool)));
-	buttonbox->addButton(m_download_button, QDialogButtonBox::NoRole);
+	QDialogButtonBox *button_box = new QDialogButtonBox(main_widget);
+	QPushButton *launch_button = new QPushButton(tr("&Launch PA"), button_box);
+	connect(launch_button, SIGNAL(clicked(bool)), SLOT(launchPushButtonClicked(bool)));
+	button_box->addButton(launch_button, QDialogButtonBox::AcceptRole);
+	QPushButton *advanced_button = new QPushButton(tr("&Advanced"), button_box);
+	connect(advanced_button, SIGNAL(clicked(bool)), SLOT(advancedPushButtonClicked(bool)));
+	button_box->addButton(advanced_button, QDialogButtonBox::NoRole);
+	mDownloadButton = new QPushButton(tr("&Download and install"), button_box);
+	connect(mDownloadButton, SIGNAL(clicked(bool)), SLOT(downloadPushButtonClicked(bool)));
+	button_box->addButton(mDownloadButton, QDialogButtonBox::NoRole);
 
-	mainLayout->addWidget(buttonbox);
+	main_layout->addWidget(button_box);
 
-	return mainWidget;
+	return main_widget;
 }
 
 QWidget* PAAlternativeLauncher::createWaitWidget(QWidget* parent)
 {
-	QWidget *mainWidget = new QWidget(parent);
-	QPalette palette = mainWidget->palette();
+	QWidget *main_widget = new QWidget(parent);
+	QPalette palette = main_widget->palette();
 	palette.setColor(QPalette::WindowText, Qt::white);
-	mainWidget->setPalette(palette);
-	QVBoxLayout *mainLayout = new QVBoxLayout(mainWidget);
-	mainWidget->setLayout(mainLayout);
+	main_widget->setPalette(palette);
+	QVBoxLayout *main_layout = new QVBoxLayout(main_widget);
+	main_widget->setLayout(main_layout);
 	
-	mainLayout->addStretch();
+	main_layout->addStretch();
 
-	QLabel *loggingInLabel = new QLabel(tr("Logging in..."), mainWidget);
-	QFont font = loggingInLabel->font();
+	QLabel *logging_in_label = new QLabel(tr("Logging in..."), main_widget);
+	QFont font = logging_in_label->font();
 	font.setBold(true);
 	font.setPointSizeF(3*font.pointSizeF());
-	loggingInLabel->setFont(font);
-	loggingInLabel->setAlignment(Qt::AlignCenter);
-	loggingInLabel->setPalette(palette);
-	mainLayout->addWidget(loggingInLabel);
+	logging_in_label->setFont(font);
+	logging_in_label->setAlignment(Qt::AlignCenter);
+	logging_in_label->setPalette(palette);
+	main_layout->addWidget(logging_in_label);
 
-	mainLayout->addSpacing(30);
+	main_layout->addSpacing(30);
 
-	QMovie *loadingMovie = new QMovie(":/img/loading.gif", "gif", this);
-	QLabel *loadingLabel = new QLabel(this);
-	loadingLabel->setMovie(loadingMovie);
-	loadingMovie->start();
-	loadingLabel->setAlignment(Qt::AlignCenter);
-	loadingLabel->setPalette(palette);
-	mainLayout->addWidget(loadingLabel);
+	QMovie *loading_movie = new QMovie(":/img/loading.gif", "gif", this);
+	QLabel *loading_label = new QLabel(this);
+	loading_label->setMovie(loading_movie);
+	loading_movie->start();
+	loading_label->setAlignment(Qt::AlignCenter);
+	loading_label->setPalette(palette);
+	main_layout->addWidget(loading_label);
 
-	mainLayout->addStretch();
+	main_layout->addStretch();
 
-	QPushButton *launchOfflineButton = new QPushButton(tr("Launch offline"), mainWidget);
-	mainLayout->addWidget(launchOfflineButton);
-	connect(launchOfflineButton, SIGNAL(clicked(bool)), SLOT(launchOfflinePushButtonClicked(bool)));
+	QPushButton *launch_offline_button = new QPushButton(tr("Launch offline"), main_widget);
+	main_layout->addWidget(launch_offline_button);
+	connect(launch_offline_button, SIGNAL(clicked(bool)), SLOT(launchOfflinePushButtonClicked(bool)));
 
-
-
-	return mainWidget;
+	return main_widget;
 }
 
-void PAAlternativeLauncher::loginPushButtonClicked(bool)
-{
-	m_login_widget->setVisible(false);
-	m_download_widget->setVisible(false);
-	m_wait_widget->setVisible(true);
 
-	QSettings settings(QSettings::UserScope, "DeathByDenim", "PAAlternativeLauncher");
 
-	QNetworkRequest request(QUrl("https://uberent.com/GC/Authenticate"));
-	QString data = QString("{\"TitleId\": 4,\"AuthMethod\": \"UberCredentials\",\"UberName\": \"%1\",\"Password\": \"%2\"}").arg(m_username_lineedit->text()).arg(m_password_lineedit->text());
-	request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json;charset=utf-8");
-	request.setAttribute(QNetworkRequest::User, QVariant("login"));
-	m_network_access_manager->post(request, data.toUtf8());
-}
 
-void PAAlternativeLauncher::lineEditReturnPressed()
+/* Handlers for interactions with QWidgets.
+ */
+
+void PAAlternativeLauncher::passwordLineEditReturnPressed()
 {
 	loginPushButtonClicked(true);
 }
 
-void PAAlternativeLauncher::replyReceived(QNetworkReply* reply)
+void PAAlternativeLauncher::loginPushButtonClicked(bool)
 {
-	if(reply->error() != QNetworkReply::NoError)
+	if(mUserNameLineEdit->text().isEmpty())
 	{
-		QString type = reply->request().attribute(QNetworkRequest::User).toString();
-		if(type == "streamnews" && reply->error() == QNetworkReply::AuthenticationRequiredError)
-		{
-			m_login_widget->setVisible(true);
-			m_download_widget->setVisible(false);
-			m_wait_widget->setVisible(false);
-			if(m_username_lineedit->text().isEmpty())
-				m_username_lineedit->setFocus(Qt::TabFocusReason);
-			else
-				m_password_lineedit->setFocus(Qt::TabFocusReason);
-
-			info.log(tr("Communication error"), tr("session ticket expired."), false);
-		}
-		else
-		{
-			info.critical(tr("Communication error"), "Error while handling " + type + ". Details: " + reply->errorString() + ".");
-			m_login_widget->setVisible(true);
-			m_download_widget->setVisible(false);
-			m_wait_widget->setVisible(false);
-		}
-	}
-	else if(reply->isFinished())
-	{
-		QString type = reply->request().attribute(QNetworkRequest::User).toString();
-		if(type == "login")
-		{
-			QByteArray data = reply->readAll();
-			m_session_ticket = decodeLoginData(data);
-			if(m_session_ticket.isEmpty())
-			{
-				info.critical(tr("Communication error"), "Error while doing login. Details: Failed to get session ticket.");
-				m_login_widget->setVisible(true);
-				m_download_widget->setVisible(false);
-				m_wait_widget->setVisible(false);
-				return;
-			}
-			QSettings settings(QSettings::UserScope, "DeathByDenim", "PAAlternativeLauncher");
-			settings.setValue("login/sessionticket", m_session_ticket);
-			QNetworkRequest request(QUrl("https://uberent.com/Launcher/ListStreams?Platform=" + m_platform));
-			request.setRawHeader("X-Authorization", m_session_ticket.toAscii());
-			request.setAttribute(QNetworkRequest::User, "streams");
-			m_network_access_manager->get(request);
-		}
-		else if(type == "streams")
-		{
-			QByteArray data = reply->readAll();
-			m_patcher.decodeStreamsData(data);
-			QStringList streamnames = m_patcher.streamNames();
-
-			m_streams_combo_box->clear();
-			m_streams_combo_box->addItems(streamnames);
-
-			m_login_widget->setVisible(false);
-			m_wait_widget->setVisible(false);
-			m_download_widget->setVisible(true);
-
-			for(QStringList::const_iterator streamname = streamnames.constBegin(); streamname != streamnames.constEnd(); ++streamname)
-			{
-				QNetworkRequest request(QUrl("https://uberent.com/Launcher/StreamNews?StreamName=" + *streamname + "&ticket=" + m_session_ticket));
-				request.setRawHeader("X-Authorization", m_session_ticket.toAscii());
-				request.setAttribute(QNetworkRequest::User, "streamnews");
-				request.setAttribute((QNetworkRequest::Attribute)(QNetworkRequest::User+1), QString(*streamname));
-				m_network_access_manager->get(request);
-			}
-			checkForUpdates(streamnames);
-		}
-		else if(type == "streamnews")
-		{
-			QString stream = reply->request().attribute((QNetworkRequest::Attribute)(QNetworkRequest::User+1)).toString();
-			QByteArray data = reply->readAll();
-			m_stream_news[stream] = QString::fromUtf8(data);
-			if(m_streams_combo_box->currentText() == stream)
-				m_patch_text_browser->setHtml(QString::fromUtf8(data));
-		}
-	}
-	reply->deleteLater();
-}
-
-QString PAAlternativeLauncher::decodeLoginData(const QByteArray &data)
-{
-	QJson::Parser parser;
-	bool ok;
-
-	QVariantMap logindata = parser.parse(data, &ok).toMap();
-	if(!ok)
-	{
-		info.critical(tr("Login"), tr("Failed to parse login data"));
-		return "";
+		QMessageBox::warning(this, tr("Login"), tr("No user name given."));
+		return;
 	}
 
-	return logindata["SessionTicket"].toString();
-}
-
-void PAAlternativeLauncher::closeEvent(QCloseEvent* event)
-{
-	QSettings settings(QSettings::UserScope, "DeathByDenim", "PAAlternativeLauncher");
-	settings.setValue("mainwindow/geometry", saveGeometry());
-	settings.setValue("login/username", m_username_lineedit->text());
-
-	QWidget::closeEvent(event);
-}
-
-void PAAlternativeLauncher::showEvent(QShowEvent* event)
-{
-	if(m_username_lineedit->text().isEmpty())
-		m_username_lineedit->setFocus(Qt::TabFocusReason);
-	else
-		m_password_lineedit->setFocus(Qt::TabFocusReason);
-
-	QWidget::showEvent(event);
-}
-
-void PAAlternativeLauncher::downloadPushButtonClicked(bool)
-{
-	quint64 freespace = getFreeDiskspaceInMB(m_installPathLineEdit->text());
-	if(freespace < 1024)
+	if(mPasswordLineEdit->text().isEmpty())
 	{
-		if(!info.warning(tr("Available disk space"), tr("Only %1 MB available. Continue anyway?").arg(freespace)))
-			return;
+		QMessageBox::warning(this, tr("Login"), tr("No password given."));
+		return;
 	}
 
-	m_download_button->setEnabled(false);
+	setState(wait_state);
 
-	QSettings settings(QSettings::UserScope, "DeathByDenim", "PAAlternativeLauncher");
-	settings.setValue(m_streams_combo_box->currentText() + "/installpath", m_installPathLineEdit->text());
-	m_patcher.setInstallPath(m_installPathLineEdit->text());
-	m_patcher.downloadStream(m_streams_combo_box->currentText());
+	QNetworkRequest request(QUrl("https://uberent.com/GC/Authenticate"));
+	QString data = QString("{\"TitleId\": 4,\"AuthMethod\": \"UberCredentials\",\"UberName\": \"%1\",\"Password\": \"%2\"}").arg(mUserNameLineEdit->text()).arg(mPasswordLineEdit->text());
+	request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json;charset=utf-8");
+	request.setRawHeader("User-Agent", QString("PAAlternativeLauncher/%1").arg(VERSION).toUtf8());
+
+	QNetworkReply *reply = mNetworkAccessManager->post(request, data.toUtf8());
+	connect(reply, SIGNAL(finished()), SLOT(authenticateFinished()));
 }
 
-void PAAlternativeLauncher::patcherProgress(int percentage)
+void PAAlternativeLauncher::streamsComboBoxCurrentIndexChanged(int)
 {
-	if(m_patch_progressbar)
-		m_patch_progressbar->setValue(percentage);
-}
+	QString current_stream = mStreamsComboBox->currentText();
 
-void PAAlternativeLauncher::patcherState(QString state)
-{
-	if(m_patch_label)
-		m_patch_label->setText(state);
+	mPatchTextBrowser->setHtml(mStreamNews[current_stream]);
 
-	if(state == "Done")
-	{
-		m_download_button->setEnabled(true);
-		m_requires_update[m_streams_combo_box->currentText()] = false;
-		m_update_available_label->setText("");
-	}
+	QSettings settings;
+	mInstallPathLineEdit->setText(settings.value(current_stream + "/installpath").toString());
+	mExtraParameters = settings.value(current_stream + "/extraparameters").toString();
+	mUseOptimus = (AdvancedDialog::optimus_t)settings.value(current_stream + "/useoptirun").toInt();
+
+	QString uber_version = mStreamsComboBox->currentData().toMap()["BuildId"].toString();
+	QString current_version = currentInstalledVersion();
+
+	mUpdateAvailableLabel->setText(tr("Update from %1 to %2 available").arg(current_version).arg(uber_version));
+	mUpdateAvailableLabel->setVisible(uber_version != current_version);
 }
 
 void PAAlternativeLauncher::installPathButtonClicked(bool)
 {
-	QString installPath = QFileDialog::getExistingDirectory(this, tr("Choose installation directory"));
-	m_installPathLineEdit->setText(installPath);
-	m_patcher.setInstallPath(installPath);
+	QString installPath = QFileDialog::getExistingDirectory(this, tr("Choose installation directory"), mInstallPathLineEdit->text(), QFileDialog::ShowDirsOnly);
+	mInstallPathLineEdit->setText(installPath);
+//	m_patcher.setInstallPath(installPath);
+
+
 }
 
-void PAAlternativeLauncher::launchPushButtonClicked(bool)
+void PAAlternativeLauncher::downloadPushButtonClicked(bool)
 {
-	QString command;
-	QStringList parameters;
-	
-	if(m_requires_update[m_streams_combo_box->currentText()])
+	QVariantMap object = mStreamsComboBox->currentData().toMap();
+	QString downloadurl = object["DownloadUrl"].toString();
+	QString titlefolder = object["TitleFolder"].toString();
+	QString manifestname = object["ManifestName"].toString();
+	QString authsuffix = object["AuthSuffix"].toString();
+
+	if(!downloadurl.isEmpty() && !titlefolder.isEmpty() && !manifestname.isEmpty() && !authsuffix.isEmpty())
 	{
-		if(QMessageBox::warning(this, tr("Update required"), tr("There is an update available for this stream.\nPlanetary Annihilation will not work on-line.\nContinue anyway?"), QMessageBox::Yes | QMessageBox::No) == QMessageBox::No)
-			return;
+		mPatchLabel->setText("Downloading manifest");
+
+		prepareZLib();
+		QUrl manifesturl(downloadurl + '/' + titlefolder + '/' + manifestname + authsuffix);
+		QNetworkRequest request(manifesturl);
+		request.setRawHeader("User-Agent", "test");
+		QNetworkReply *reply = mNetworkAccessManager->get(request);
+		connect(reply, SIGNAL(readyRead()), SLOT(manifestReadyRead()));
+		connect(reply, SIGNAL(downloadProgress(qint64,qint64)), SLOT(manifestDownloadProgress(qint64,qint64)));
+		connect(reply, SIGNAL(finished()), SLOT(manifestFinished()));
 	}
+}
 
-	command =
-		m_installPathLineEdit->text() +
-#ifdef linux
-		"/PA"
-#elif _WIN32
-		"\\bin_x64\\PA.exe"
-// or:	"\\bin_x86\\PA.exe"
-#elif __APPLE__
-		"/PA.app/Contents/MacOS/PA"
-#endif
-	;
+void PAAlternativeLauncher::patcherDone()
+{
+	QMessageBox::information(this, "Patcher", "Done");
+}
 
-	switch(m_use_optimus)
-	{
-		case AdvancedDialog::optirun:
-			parameters << command;
-			command = "optirun";
-			break;
-		case AdvancedDialog::primusrun:
-			parameters << command;
-			command = "primusrun";
-			break;
-		default:
-			break;
-	}
+void PAAlternativeLauncher::patcherError(QString error)
+{
+	QMessageBox::critical(this, "Patcher", error);
+}
 
-
-	parameters.append("--ticket");
-	parameters.append(m_session_ticket);
-	parameters.append(m_extraParameters.split(" "));
-
-	if(QProcess::startDetached(command, parameters))
-	{
-		close();
-	}
-	else
-		info.critical(tr("Failed to launch"), tr("Error while starting PA with the following command:") + "\n" + command);
+void PAAlternativeLauncher::patcherProgress(int percentage)
+{
+	mPatchProgressbar->setValue(percentage);
 }
 
 void PAAlternativeLauncher::launchOfflinePushButtonClicked(bool)
 {
 	// Update manually, because no stream are selected yet.
-	streamsCurrentIndexChanged("stable");
+	streamsComboBoxCurrentIndexChanged(0);
 
 	QString command;
 	QStringList parameters;
 
 	command =
-		m_installPathLineEdit->text() +
+		mInstallPathLineEdit->text() +
 #ifdef linux
 		"/PA"
 #elif _WIN32
@@ -551,7 +420,7 @@ void PAAlternativeLauncher::launchOfflinePushButtonClicked(bool)
 	;
 
 #ifdef linux
-	switch(m_use_optimus)
+	switch(mUseOptimus)
 	{
 		case AdvancedDialog::optirun:
 			parameters << command;
@@ -566,7 +435,7 @@ void PAAlternativeLauncher::launchOfflinePushButtonClicked(bool)
 	}
 #endif
 
-	parameters.append(m_extraParameters.split(" "));
+	parameters.append(mExtraParameters.split(" "));
 
 	if(QProcess::startDetached(command, parameters))
 	{
@@ -576,85 +445,345 @@ void PAAlternativeLauncher::launchOfflinePushButtonClicked(bool)
 		info.critical(tr("Failed to launch"), tr("Error while starting PA with the following command:") + "\n" + command);
 }
 
+void PAAlternativeLauncher::launchPushButtonClicked(bool)
+{
+	QString command;
+	QStringList parameters;
+
+	QString uber_version = mStreamsComboBox->currentData().toMap()["BuildId"].toString();
+	QString current_version = currentInstalledVersion();
+
+	bool use_ticket = true;
+	if(uber_version != current_version)
+	{
+		if(QMessageBox::warning(this, tr("Update required"), tr("There is an update available for this stream.\nPlanetary Annihilation will not work on-line.\n\nContinue in off-line mode?"), QMessageBox::Yes | QMessageBox::No) == QMessageBox::No)
+			return;
+
+		use_ticket = false;
+	}
+
+	command =
+		mInstallPathLineEdit->text() +
+#ifdef linux
+		"/PA"
+#elif _WIN32
+		"\\bin_x64\\PA.exe"
+// or:	"\\bin_x86\\PA.exe"
+#elif __APPLE__
+		"/PA.app/Contents/MacOS/PA"
+#endif
+	;
+
+#ifdef linux
+	switch(mUseOptimus)
+	{
+		case AdvancedDialog::optirun:
+			parameters << command;
+			command = "optirun";
+			break;
+		case AdvancedDialog::primusrun:
+			parameters << command;
+			command = "primusrun";
+			break;
+		default:
+			break;
+	}
+#endif
+
+	if(use_ticket)
+	{
+		parameters.append("--ticket");
+		parameters.append(mSessionTicket);
+	}
+	parameters.append(mExtraParameters.split(" "));
+
+	if(QProcess::startDetached(command, parameters))
+	{
+		close();
+	}
+	else
+		info.critical(tr("Failed to launch"), tr("Error while starting PA with the following command:") + "\n" + command);
+}
+
+
 void PAAlternativeLauncher::advancedPushButtonClicked(bool)
 {
 	QSettings settings(QSettings::UserScope, "DeathByDenim", "PAAlternativeLauncher");
 
-	AdvancedDialog *advanceddialog = new AdvancedDialog(m_extraParameters, m_use_optimus, this);
+	AdvancedDialog *advanceddialog = new AdvancedDialog(mExtraParameters, mUseOptimus, this);
 	if(advanceddialog->exec() == QDialog::Accepted)
 	{
-		m_extraParameters = advanceddialog->parameters();
-		m_use_optimus = advanceddialog->useOptimus();
-		settings.setValue(m_streams_combo_box->currentText() + "/extraparameters", m_extraParameters);
-		settings.setValue(m_streams_combo_box->currentText() + "/useoptirun", (int)m_use_optimus);
+		mExtraParameters = advanceddialog->parameters();
+		mUseOptimus = advanceddialog->useOptimus();
+		settings.setValue(mStreamsComboBox->currentText() + "/extraparameters", mExtraParameters);
+		settings.setValue(mStreamsComboBox->currentText() + "/useoptirun", (int)mUseOptimus);
 	}
 
 	delete advanceddialog;
 }
 
-void PAAlternativeLauncher::streamsCurrentIndexChanged(QString streamname)
+void PAAlternativeLauncher::patcherStateChange(QString state)
 {
-	QSettings settings(QSettings::UserScope, "DeathByDenim", "PAAlternativeLauncher");
-	m_extraParameters = settings.value(streamname + "/extraparameters").toString();
-	m_use_optimus = (AdvancedDialog::optimus_t)settings.value(streamname + "/useoptirun").toInt();
-
-	m_installPathLineEdit->setText(settings.value(streamname + "/installpath").toString());
-
-	m_patch_text_browser->setHtml(m_stream_news[streamname]);
-	
-	if(m_requires_update[streamname])
-		m_update_available_label->setText(tr("Update available!"));
-	else
-		m_update_available_label->setText("");
+	mPatchLabel->setText(state);
 }
 
-void PAAlternativeLauncher::checkForUpdates(QStringList streamnames)
+
+
+
+/* Handlers for the various network requests pertaining to authenticating and stream info.
+ */
+
+void PAAlternativeLauncher::authenticateFinished()
 {
-	QSettings settings(QSettings::UserScope, "DeathByDenim", "PAAlternativeLauncher");
-	for(QStringList::const_iterator streamname = streamnames.constBegin(); streamname != streamnames.constEnd(); ++streamname)
+	QNetworkReply *reply = dynamic_cast<QNetworkReply *>(sender());
+	if(reply)
 	{
-		QString installpath = settings.value(*streamname + "/installpath").toString();
-#ifdef __APPLE__
-		QFile buildidfile(installpath + "/PA.app/Contents/Resources/version.txt");
-#else
-		QFile buildidfile(installpath + "/version.txt");
-#endif
-		if(!buildidfile.open(QIODevice::ReadOnly))
+		if(reply->error() == QNetworkReply::NoError)
 		{
-			m_requires_update[*streamname] = true;
-			break;
-		}
-		QByteArray buildidbytearray = buildidfile.readLine();
-		m_requires_update[*streamname] = (buildidbytearray.trimmed() != m_patcher.buildId(*streamname));
+			QJsonDocument authjson = QJsonDocument::fromJson(reply->readAll());
+			mSessionTicket = authjson.object()["SessionTicket"].toString();
+			if(!mSessionTicket.isEmpty())
+			{
+				QSettings settings;
+				settings.setValue("login/sessionticket", mSessionTicket);
 
-		if(m_requires_update[m_streams_combo_box->currentText()])
-			m_update_available_label->setText(tr("Update available!"));
+				QNetworkRequest request(QUrl("https://uberent.com/Launcher/ListStreams?Platform=" + mPlatform));
+				request.setRawHeader("X-Authorization", mSessionTicket.toUtf8());
+				request.setRawHeader("User-Agent", QString("PAAlternativeLauncher/%1").arg(VERSION).toUtf8());
+				QNetworkReply *reply = mNetworkAccessManager->get(request);
+				connect(reply, SIGNAL(finished()), SLOT(streamsFinished()));
+			}
+			else
+			{
+				QMessageBox::critical(this, tr("Authenticate"), tr("Empty session ticket"));
+				setState(login_state);
+			}
+		}
 		else
-			m_update_available_label->setText("");
+		{
+			QMessageBox::critical(this, tr("Authenticate"), tr("Error while authenticating.\n%1").arg(reply->errorString()));
+			setState(login_state);
+		}
+
+		reply->deleteLater();
 	}
 }
 
-quint64 PAAlternativeLauncher::getFreeDiskspaceInMB(QString directory)
+void PAAlternativeLauncher::streamsFinished()
 {
-	QByteArray dir = directory.toLatin1();
-#if defined(linux) || defined(__APPLE__)
-	struct statvfs diskinfo;
-	int rc = statvfs(dir.constData(), &diskinfo);
-	if(rc != 0)
+	QNetworkReply *reply = dynamic_cast<QNetworkReply *>(sender());
+	if(reply)
 	{
-		info.log(tr("Disk space"), QString("could not be determined (%1)").arg(errno));
-		return ULONG_MAX;
-	}
-	return (diskinfo.f_bavail / 1024) * (diskinfo.f_bsize / 1024);
-#elif defined(_WIN32)
-	ULARGE_INTEGER FreeBytesAvailable, TotalNumberOfBytes, TotalNumberOfFreeBytes;
-	if(GetDiskFreeSpaceEx(dir.constData(), &FreeBytesAvailable, &TotalNumberOfBytes, &TotalNumberOfFreeBytes))
-	{
-		return FreeBytesAvailable.QuadPart / (1024*1024);
-	}
-#endif
+		if(reply->error() == QNetworkReply::NoError)
+		{
+			setState(download_state);
 
-	return ULONG_MAX;
+			mStreamsComboBox->clear();
+			QJsonDocument authjson = QJsonDocument::fromJson(reply->readAll());
+			QJsonArray streams = authjson.object()["Streams"].toArray();
+			for(QJsonArray::const_iterator stream = streams.constBegin(); stream != streams.constEnd(); ++stream)
+			{
+				QJsonObject object = (*stream).toObject();
+				QString download_url = object["DownloadUrl"].toString();
+				QString title_folder = object["TitleFolder"].toString();
+				QString manifest_name = object["ManifestName"].toString();
+				QString auth_suffix = object["AuthSuffix"].toString();
+				QString stream_name = object["StreamName"].toString();
+
+				mStreamsComboBox->addItem(stream_name, object.toVariantMap());
+
+				// Get the news
+				QNetworkRequest request(QUrl("https://uberent.com/Launcher/StreamNews?StreamName=" + stream_name + "&ticket=" + mSessionTicket));
+				request.setRawHeader("X-Authorization", mSessionTicket.toUtf8());
+				request.setRawHeader("User-Agent", QString("PAAlternativeLauncher/%1").arg(VERSION).toUtf8());
+				request.setAttribute(QNetworkRequest::User, stream_name);
+				QNetworkReply *stream_news_reply = mNetworkAccessManager->get(request);
+				connect(stream_news_reply, SIGNAL(finished()), SLOT(streamNewsReplyFinished()));
+			}
+		}
+		else
+		{
+			QMessageBox::critical(this, tr("Streams"), tr("Error while getting streams.\n%1").arg(reply->errorString()));
+			setState(login_state);
+		}
+
+		reply->deleteLater();
+	}
+}
+
+void PAAlternativeLauncher::manifestReadyRead()
+{
+	QNetworkReply *reply = dynamic_cast<QNetworkReply *>(sender());
+	if(reply)
+	{
+		if(reply->error() == QNetworkReply::NoError)
+		{
+			qint64 bytes_available = reply->bytesAvailable();
+			QByteArray input = reply->read(bytes_available);
+			Q_ASSERT(input.size() == bytes_available);
+			mZstream.next_in = (Bytef *)input.constData();
+			mZstream.avail_in = bytes_available;
+
+			uInt old_avail_out = mZstream.avail_out;
+			int res = inflate(&mZstream, Z_SYNC_FLUSH);
+			if(res != Z_OK && res != Z_STREAM_END)
+			{
+				reply->abort();
+				QMessageBox::warning(this, "ZLib", mZstream.msg);
+				return;
+			}
+
+			mManifestJson.write((const char *)mBuffer, old_avail_out - mZstream.avail_out);
+			mZstream.avail_out = mBufferSize;
+			mZstream.next_out = mBuffer;
+			Q_ASSERT(mZstream.avail_in == 0);
+		}
+		else
+		{
+			reply->abort();
+			QMessageBox::critical(this, tr("Manifest"), tr("Error while getting manifest (1).\n%1").arg(reply->errorString()));
+		}
+	}
+}
+
+void PAAlternativeLauncher::manifestDownloadProgress(qint64 downloaded, qint64 total)
+{
+	mPatchProgressbar->setValue(100. * downloaded / total);
+}
+
+void PAAlternativeLauncher::manifestFinished()
+{
+	QNetworkReply *reply = dynamic_cast<QNetworkReply *>(sender());
+	if(reply)
+	{
+		if(reply->error() == QNetworkReply::NoError)
+		{
+			int res = inflateEnd(&mZstream);
+			if(res != Z_OK && res != Z_STREAM_END)
+			{
+				QMessageBox::warning(this, "ZLib 2", mZstream.msg);
+				return;
+			}
+
+			delete[] mBuffer;
+			mBuffer = NULL;
+
+			QVariantMap object = mStreamsComboBox->currentData().toMap();
+			QString downloadurl = object["DownloadUrl"].toString();
+			QString titlefolder = object["TitleFolder"].toString();
+			QString authsuffix = object["AuthSuffix"].toString();
+
+			mNetworkAccessManager->deleteLater();
+
+			mPatcher = new Patcher(mNetworkAccessManager, NULL);
+			mPatcher->moveToThread(&mPatcherThread);
+			mNetworkAccessManager->moveToThread(&mPatcherThread);
+
+			mPatcher->setInstallPath(mInstallPathLineEdit->text());
+			mPatcher->setDownloadUrl(downloadurl + "/" + titlefolder + "/hashed/%1" + authsuffix);
+			mPatcher->giveJsonData(mManifestJson.buffer());
+			mManifestJson.close();
+
+			connect(mPatcher, SIGNAL(done()), this, SLOT(patcherDone()));
+			connect(mPatcher, SIGNAL(error(QString)), this, SLOT(patcherError(QString)));
+			connect(mPatcher, SIGNAL(progress(int)), this, SLOT(patcherProgress(int)));
+			connect(mPatcher, SIGNAL(stateChange(QString)), this, SLOT(patcherStateChange(QString)));
+			connect(&mPatcherThread, SIGNAL(finished()), mPatcher, SLOT(deleteLater()));
+			connect(&mPatcherThread, SIGNAL(started()), mPatcher, SLOT(parseManifest()));
+
+			mPatcherThread.start();
+		}
+		else
+		{
+			if(reply->error() == QNetworkReply::AuthenticationRequiredError)
+				setState(login_state);
+			else
+				QMessageBox::critical(this, tr("Manifest"), tr("Error while getting manifest (2).\n%1").arg(reply->errorString()));
+		}
+
+		reply->deleteLater();
+	}
+}
+
+void PAAlternativeLauncher::streamNewsReplyFinished()
+{
+	QNetworkReply *reply = dynamic_cast<QNetworkReply *>(sender());
+	if(reply)
+	{
+		if(reply->error() == QNetworkReply::NoError)
+		{
+			QString stream_name = reply->request().attribute(QNetworkRequest::User).toString();
+			if(!stream_name.isEmpty())
+			{
+				mStreamNews[stream_name] = reply->readAll();
+				if(mStreamsComboBox->currentText() == stream_name)
+					mPatchTextBrowser->setHtml(mStreamNews[stream_name]);
+			}
+		}
+		else
+		{
+			if(reply->error() == QNetworkReply::AuthenticationRequiredError)
+				setState(login_state);
+			else
+				QMessageBox::critical(this, tr("Stream news"), tr("Error while getting stream news.\n%1").arg(reply->errorString()));
+		}
+
+		reply->deleteLater();
+	}
+}
+
+
+
+/* Utility functions
+ */
+
+void PAAlternativeLauncher::prepareZLib()
+{
+	mBuffer = new Bytef[mBufferSize];
+
+	mZstream.next_out = mBuffer;
+	mZstream.avail_out = mBufferSize;
+	mZstream.next_in = Z_NULL;
+	mZstream.avail_in = 0;
+	mZstream.zalloc = Z_NULL;
+	mZstream.zfree = Z_NULL;
+	mZstream.opaque = Z_NULL;
+	if(inflateInit2(&mZstream, 16 + MAX_WBITS) != Z_OK)
+	{
+		QMessageBox::critical(this, "ZLib", mZstream.msg);
+		return;
+	}
+	mManifestJson.close();
+	mManifestJson.open(QBuffer::WriteOnly);
+}
+
+void PAAlternativeLauncher::setState(PAAlternativeLauncher::EState state)
+{
+	mLoginWidget->setVisible(state == login_state);
+	mDownloadWidget->setVisible(state == download_state);
+	mWaitWidget->setVisible(state == wait_state);
+	
+	if(state == login_state)
+	{
+		if(mUserNameLineEdit->text().isEmpty())
+			mUserNameLineEdit->setFocus();
+		else
+			mPasswordLineEdit->setFocus();
+	}
+}
+
+QString PAAlternativeLauncher::currentInstalledVersion()
+{
+	if(mInstallPathLineEdit->text().isEmpty())
+		return "";
+
+	QFile versionfile(mInstallPathLineEdit->text() + "/version.txt");
+	if(versionfile.open(QFile::ReadOnly))
+	{
+		return versionfile.readLine().trimmed();
+	}
+	else
+		return "";
 }
 
 #include "paalternativelauncher.moc"
