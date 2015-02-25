@@ -31,6 +31,7 @@
 #include "version.h"
 #include "patcher.h"
 #include "advanceddialog.h"
+#include "moddatabaseframe.h"
 
 
 PAAlternativeLauncher::PAAlternativeLauncher()
@@ -256,6 +257,9 @@ QWidget* PAAlternativeLauncher::createDownloadWidget(QWidget* parent)
 
 	main_layout->addWidget(button_box);
 
+	mModDatabaseFrame = new ModDatabaseFrame(main_widget);
+	main_layout->addWidget(mModDatabaseFrame);
+
 	return main_widget;
 }
 
@@ -354,6 +358,8 @@ void PAAlternativeLauncher::streamsComboBoxCurrentIndexChanged(int)
 		mUpdateAvailableLabel->setText(tr("Update from %1 to %2 available").arg(current_version).arg(uber_version));
 
 	mUpdateAvailableLabel->setVisible(uber_version != current_version);
+	
+	mModDatabaseFrame->setInstallPath(mInstallPathLineEdit->text());
 }
 
 void PAAlternativeLauncher::installPathButtonClicked(bool)

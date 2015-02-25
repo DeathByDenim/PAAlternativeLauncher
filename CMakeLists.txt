@@ -20,7 +20,7 @@ find_package(ZLIB REQUIRED)
 
 include_directories(${Qt5Core_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR} ${ZLIB_INCLUDE_DIR})
 
-set(paalternativelauncher_SRCS bundle.cpp patcher.cpp paalternativelauncher.cpp main.cpp information.cpp advanceddialog.cpp)
+set(paalternativelauncher_SRCS moddatabaseframe.cpp bundle.cpp patcher.cpp paalternativelauncher.cpp main.cpp information.cpp advanceddialog.cpp)
 qt5_add_resources(paalternativelauncher_RCC_SRCS paalternativelauncher.qrc)
 
 add_executable(paalternativelauncher ${paalternativelauncher_SRCS} ${paalternativelauncher_RCC_SRCS})

@@ -16,6 +16,7 @@
 #include "advanceddialog.h"
 
 class Patcher;
+class ModDatabaseFrame;
 
 class PAAlternativeLauncher : public QMainWindow
 {
@@ -56,6 +57,7 @@ private:
 	QString mExtraParameters;
 	AdvancedDialog::optimus_t mUseOptimus;
 	QThread mPatcherThread;
+	ModDatabaseFrame *mModDatabaseFrame;
 
 	void prepareZLib();
 	QWidget * createLoginWidget(QWidget * parent);
