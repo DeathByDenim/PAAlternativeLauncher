@@ -529,6 +529,11 @@ void PAAlternativeLauncher::advancedPushButtonClicked(bool)
 void PAAlternativeLauncher::patcherStateChange(QString state)
 {
 	mPatchLabel->setText(state);
+	if(state == "Done")
+	{
+		mPatchLabel->setVisible(false);
+		mPatcherThread.quit();
+	}
 }
 
 
