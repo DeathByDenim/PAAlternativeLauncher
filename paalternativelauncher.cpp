@@ -348,7 +348,11 @@ void PAAlternativeLauncher::streamsComboBoxCurrentIndexChanged(int)
 	QString uber_version = mStreamsComboBox->currentData().toMap()["BuildId"].toString();
 	QString current_version = currentInstalledVersion();
 
-	mUpdateAvailableLabel->setText(tr("Update from %1 to %2 available").arg(current_version).arg(uber_version));
+	if(current_version.isEmpty())
+		mUpdateAvailableLabel->setText(tr("Build %2 available").arg(uber_version));
+	else
+		mUpdateAvailableLabel->setText(tr("Update from %1 to %2 available").arg(current_version).arg(uber_version));
+
 	mUpdateAvailableLabel->setVisible(uber_version != current_version);
 }
 

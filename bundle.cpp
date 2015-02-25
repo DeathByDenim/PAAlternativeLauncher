@@ -110,10 +110,12 @@ void Bundle::verify(QJsonObject* array)
 	for(QList<File>::iterator f = mFiles.begin(); f != mFiles.end(); ++f)
 		(*f).future.waitForFinished();
 
+	emit verifyDone();
+
 	if(mNeedsDownloading)
 		emit downloadMe();
-	
-	emit verifyDone();
+	else
+		emit finished();
 }
 
 bool Bundle::verifySHA1(Bundle::File file_entry, bool* downloading)
@@ -278,6 +280,8 @@ void Bundle::downloadFinished()
 		mCurrentFile = NULL;
 
 		reply->deleteLater();
+
+		emit finished();
 	}
 }
 

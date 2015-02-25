@@ -70,6 +70,7 @@ signals:
 	void downloadMe();
 	void downloadProgress(qint64);
 	void verifyDone();
+	void finished();
 };
 
 #endif // BUNDLE_H

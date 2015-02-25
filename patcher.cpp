@@ -55,6 +55,8 @@ void Patcher::startVerifying()
 
 	mBytesToDownload = 0;
 	mBytesDownloaded = 0;
+	mBundlesVerified = 0;
+	mBundlesFinished = 0;
 	if(mDocument.isObject())
 	{
 		QJsonArray bundles = mDocument.object()["bundles"].toArray();
@@ -66,6 +68,7 @@ void Patcher::startVerifying()
 			connect(bundle, SIGNAL(downloadMe()), SLOT(bundleDownloadMe()));
 			connect(bundle, SIGNAL(downloadProgress(qint64)), SLOT(bundleDownloadProgress(qint64)));
 			connect(bundle, SIGNAL(verifyDone()), SLOT(bundleVerifyDone()));
+			connect(bundle, SIGNAL(finished()), SLOT(bundleFinished()));
 			bundle->verify(&bundle_json_object);
 		}
 	}
@@ -117,6 +120,13 @@ void Patcher::bundleVerifyDone()
 	{
 		emit stateChange("Downloading and extracting");
 	}
+}
+
+void Patcher::bundleFinished()
+{
+	mBundlesFinished++;
+	if(mBundlesFinished == mNumBundles)
+		emit stateChange("Done");
 }
 
 
