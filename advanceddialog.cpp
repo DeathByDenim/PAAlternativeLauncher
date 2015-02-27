@@ -73,6 +73,8 @@ AdvancedDialog::AdvancedDialog(const QString& extraparameters, const AdvancedDia
 		"  --nomods                 : disable loading and mounting of mod folders\n"
 		"  --steam                  : attempt to initialize the Steam API\n"
 		"  --forcefullscreen        : lock display mode to fullscreen\n"
+		"  --local-server           : path to local server executable\n"
+		"  --matchmaking-url        : connect to matchmaking via explicit url (e.g. localhost)\n"
 		"  --disable-ui-boot-cache  : Don't cache boot.js - for development\n"
 		"  --coherent-log-level     : Set coherent logging level [TRACE|DEBUG|INFO|WARNING|ASSERTFAILURE|ERROR|]\n"
 		"  --coherent-allow-minidumps : allow coherent to create minidumps\n"

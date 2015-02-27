@@ -792,7 +792,11 @@ QString PAAlternativeLauncher::currentInstalledVersion()
 	if(mInstallPathLineEdit->text().isEmpty())
 		return "";
 
+#ifdef __APPLE__
+	QFile versionfile(mInstallPathLineEdit->text() + "/PA.app/Resources/version.txt");
+#else
 	QFile versionfile(mInstallPathLineEdit->text() + "/version.txt");
+#endif
 	if(versionfile.open(QFile::ReadOnly))
 	{
 		return versionfile.readLine().trimmed();

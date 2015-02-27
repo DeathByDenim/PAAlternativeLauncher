@@ -150,7 +150,7 @@ bool Bundle::verifySHA1(Bundle::File file_entry, bool* downloading)
 		}
 	}
 	else
-		;//FATAL
+		return false;//FATAL
 }
 
 void Bundle::downloadAndExtract(QNetworkAccessManager* network_access_manager, QString download_url)
