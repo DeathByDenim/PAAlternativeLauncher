@@ -341,6 +341,8 @@ void PAAlternativeLauncher::loginPushButtonClicked(bool)
 void PAAlternativeLauncher::streamsComboBoxCurrentIndexChanged(int)
 {
 	QString current_stream = mStreamsComboBox->currentText();
+	if(current_stream.isEmpty())
+		return;
 
 	mPatchTextBrowser->setHtml(mStreamNews[current_stream]);
 
@@ -411,14 +413,17 @@ void PAAlternativeLauncher::patcherProgress(int percentage)
 
 void PAAlternativeLauncher::launchOfflinePushButtonClicked(bool)
 {
-	// Update manually, because no stream are selected yet.
-	streamsComboBoxCurrentIndexChanged(0);
+	// Update manually, because no streams are selected yet.
+	QSettings settings;
+	QString install_path = settings.value("stable/installpath").toString();
+	mExtraParameters = settings.value("stable/extraparameters").toString();
+	mUseOptimus = (AdvancedDialog::optimus_t)settings.value("stable/useoptirun").toInt();
 
 	QString command;
 	QStringList parameters;
 
 	command =
-		mInstallPathLineEdit->text() +
+		install_path +
 #ifdef linux
 		"/PA"
 #elif _WIN32
