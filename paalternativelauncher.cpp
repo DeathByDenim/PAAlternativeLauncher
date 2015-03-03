@@ -87,6 +87,9 @@ PAAlternativeLauncher::PAAlternativeLauncher()
 	centre_layout->addWidget(mDownloadWidget);
 	centre_layout->addWidget(mWaitWidget);
 
+	mModDatabaseFrame = new ModDatabaseFrame(centre_widget);
+	centre_layout->addWidget(mModDatabaseFrame);
+
 	main_layout->addWidget(centre_widget);
 
 	mPatchLabel = new QLabel(main_widget);
@@ -257,9 +260,6 @@ QWidget* PAAlternativeLauncher::createDownloadWidget(QWidget* parent)
 
 	main_layout->addWidget(button_box);
 
-	mModDatabaseFrame = new ModDatabaseFrame(main_widget);
-	main_layout->addWidget(mModDatabaseFrame);
-
 	return main_widget;
 }
 
@@ -362,15 +362,13 @@ void PAAlternativeLauncher::streamsComboBoxCurrentIndexChanged(int)
 	mUpdateAvailableLabel->setVisible(uber_version != current_version);
 	
 	mModDatabaseFrame->setInstallPath(mInstallPathLineEdit->text());
+	mModDatabaseFrame->setVisible(!mExtraParameters.contains("--nomods"));
 }
 
 void PAAlternativeLauncher::installPathButtonClicked(bool)
 {
 	QString installPath = QFileDialog::getExistingDirectory(this, tr("Choose installation directory"), mInstallPathLineEdit->text(), QFileDialog::ShowDirsOnly);
 	mInstallPathLineEdit->setText(installPath);
-//	m_patcher.setInstallPath(installPath);
-
-
 }
 
 void PAAlternativeLauncher::downloadPushButtonClicked(bool)
