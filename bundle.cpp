@@ -14,9 +14,7 @@
 #include <QNetworkReply>
 #include <QMessageBox>
 #include <zlib.h>
-#if defined(_WIN32)
-#  include <WinBase.h>
-#else
+#if !defined(_WIN32)
 #  include <unistd.h>
 #  include <cstring>
 #  include <cerrno>
@@ -115,7 +113,16 @@ void Bundle::verify(QJsonObject* array)
 	if(mNeedsDownloading)
 		emit downloadMe();
 	else
+	{
+#ifdef _WIN32
+		for(QMap<QString,QString>::const_iterator symlink = mCopyLater.constBegin(); symlink != mCopyLater.constEnd(); ++symlink)
+		{
+			QFile from_file(symlink.key());
+			from_file.copy(symlink.value());
+		}
+#endif
 		emit finished();
+	}
 }
 
 bool Bundle::verifySHA1(Bundle::File file_entry, bool* downloading)
@@ -281,6 +288,14 @@ void Bundle::downloadFinished()
 
 		reply->deleteLater();
 
+#ifdef _WIN32
+		for(QMap<QString,QString>::const_iterator symlink = mCopyLater.constBegin(); symlink != mCopyLater.constEnd(); ++symlink)
+		{
+			QFile from_file(symlink.key());
+			from_file.copy(symlink.value());
+		}
+#endif
+
 		emit finished();
 	}
 }
@@ -382,12 +397,7 @@ bool Bundle::createSymbolicLink(const QString& from, const QString& to)
 	}
 
 #if defined(_WIN32)
-	BOOLEAN res = CreateSymbolicLink((mInstallPath + "/" + to).toStdString().c_str(), path1.join("/").toStdString().c_str(), 0);
-	if(!res)
-	{
-		qDebug() << GetLastError();
-		return false;
-	}
+	mCopyLater[mInstallPath + "/" + to] = path1.join("/");
 #else
 	int res = symlink(path1.join("/").toStdString().c_str(), (mInstallPath + "/" + to).toStdString().c_str());
 	if(res != 0)

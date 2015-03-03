@@ -3,6 +3,9 @@
 
 #include <QObject>
 #include <QFuture>
+#ifdef _WIN32
+#	include <QMap>
+#endif
 #include <zlib.h>
 
 class QFile;
@@ -37,8 +40,8 @@ private:
 		QByteArray *data_on_disk;
 		QFuture<bool> future;
 	};
-	ulong mTotalSize;
 
+	ulong mTotalSize;
 	QList<File> mFiles;
 	QString mInstallPath;
 	Patcher *mPatcher;
@@ -52,6 +55,9 @@ private:
 	QFile *mCurrentFile;
 	bool mCurrentFileIsGzipped;
 	int mFilesCurrentIndex;
+#if defined(_WIN32)
+	QMap<QString,QString> mCopyLater;
+#endif
 
 	static bool verifySHA1(Bundle::File file_entry, bool *downloading);
 	void prepareZLib();
