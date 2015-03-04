@@ -16,7 +16,7 @@
 #include <algorithm>
 
 ModDatabaseFrame::ModDatabaseFrame(QWidget* parent)
- : QFrame(parent)
+ : QFrame(parent), mIgnoreStateChange(false)
 {
 	setFrameShape(QFrame::Box);
 	setFrameShadow(QFrame::Raised);
@@ -89,7 +89,7 @@ QWidget * ModDatabaseFrame::loadMods(QString mod_dir, QString header, QWidget* p
 	QJsonArray enabled_mods = QJsonDocument::fromJson(mods_json_file.readAll()).object()["mount_order"].toArray();
 	mods_json_file.close();
 
-	QList<mod_t> mod_list;
+	QList<mod_t *> mod_list;
 
 	QDirIterator it(local_pa_dir + "/" + mod_dir);
 	while(it.hasNext())
@@ -101,20 +101,24 @@ QWidget * ModDatabaseFrame::loadMods(QString mod_dir, QString header, QWidget* p
 			QJsonObject mod_info = QJsonDocument::fromJson(modinfo_json_file.readAll()).object();
 			modinfo_json_file.close();
 
-			mod_t mod = {
-				mod_info["display_name"].toString(),
-				mod_info["identifier"].toString(),
-				mod_info["priority"].toInt(),
-				false,
-				NULL,
-				local_pa_dir + "/" + mod_dir + "/mods.json"
-			};
+			mod_t *mod = new mod_t;
+			mod->name = mod_info["display_name"].toString();
+			mod->identifier = mod_info["identifier"].toString();
+			mod->priority = mod_info["priority"].toInt();
+			mod->enabled = false;
+			mod->processed = false;
+			mod->check_box = NULL;
+			mod->mods_json_file_name = local_pa_dir + "/" + mod_dir + "/mods.json";
+
+			QJsonArray array = mod_info["dependencies"].toArray();
+			for(QJsonArray::const_iterator dep = array.constBegin(); dep != array.constEnd(); ++dep)
+				mod->dependencies.push_back((*dep).toString());
 
 			for(QJsonArray::const_iterator enabled_mod = enabled_mods.constBegin(); enabled_mod != enabled_mods.constEnd(); ++enabled_mod)
 			{
-				if(*enabled_mod == mod.identifier)
+				if(*enabled_mod == mod->identifier)
 				{
-					mod.enabled = true;
+					mod->enabled = true;
 					break;
 				}
 			}
@@ -140,18 +144,18 @@ QWidget * ModDatabaseFrame::loadMods(QString mod_dir, QString header, QWidget* p
 		header_label->setPalette(header_palette);
 		main_layout->addWidget(header_label);
 
-		for(QList<mod_t>::iterator mod = mod_list.begin(); mod != mod_list.end(); ++mod)
+		for(QList<mod_t *>::iterator mod = mod_list.begin(); mod != mod_list.end(); ++mod)
 		{
-			QCheckBox *mod_check_box = new QCheckBox((*mod).name, main_widget);
-			mod_check_box->setChecked((*mod).enabled);
-			if((*mod).identifier == "com.pa.deathbydenim.dpamm" || (*mod).identifier == "com.pa.raevn.pamm")
+			QCheckBox *mod_check_box = new QCheckBox((*mod)->name, main_widget);
+			mod_check_box->setChecked((*mod)->enabled);
+			if((*mod)->identifier == "com.pa.deathbydenim.dpamm" || (*mod)->identifier == "com.pa.raevn.pamm")
 				mod_check_box->setEnabled(false);
 
 			QPalette mod_check_box_palette = mod_check_box->palette();
 			mod_check_box_palette.setColor(QPalette::WindowText, Qt::white);
 			mod_check_box->setPalette(mod_check_box_palette);
 			main_layout->addWidget(mod_check_box);
-			(*mod).check_box = mod_check_box;
+			(*mod)->check_box = mod_check_box;
 
 			connect(mod_check_box, SIGNAL(stateChanged(int)), SLOT(modCheckBoxStateChanged(int)));
 		}
@@ -166,15 +170,28 @@ QWidget * ModDatabaseFrame::loadMods(QString mod_dir, QString header, QWidget* p
 
 void ModDatabaseFrame::modCheckBoxStateChanged(int state)
 {
+	if(mIgnoreStateChange)
+		return;
+
 	QCheckBox *mod_check_box = dynamic_cast<QCheckBox *>(sender());
 	if(mod_check_box)
 	{
-		for(QList<mod_t>::iterator mod = mModList.begin(); mod != mModList.end(); ++mod)
+		for(QList<mod_t *>::iterator mod = mModList.begin(); mod != mModList.end(); ++mod)
 		{
-			if((*mod).check_box == mod_check_box)
+			if((*mod)->check_box == mod_check_box)
 			{
-				(*mod).enabled = (state == Qt::Checked);
-				updateModsJson((*mod).mods_json_file_name);
+				for(QList<mod_t *>::iterator mod2 = mModList.begin(); mod2 != mModList.end(); ++mod2)
+					(*mod2)->processed = false;
+
+				mIgnoreStateChange = true;
+
+				if(state == Qt::Checked)
+					enableMod(*mod);
+				else
+					disableMod(*mod);
+
+				updateModsJson((*mod)->mods_json_file_name);
+				mIgnoreStateChange = false;
 				break;
 			}
 		}
@@ -191,10 +208,10 @@ void ModDatabaseFrame::updateModsJson(QString mod_json_file_name)
 		QJsonArray mount_order = mods_json_document.object()["mount_order"].toArray();
 		
 		QJsonArray new_mount_order;
-		for(QList<mod_t>::const_iterator mod = mModList.constBegin(); mod != mModList.constEnd(); ++mod)
+		for(QList<mod_t *>::const_iterator mod = mModList.constBegin(); mod != mModList.constEnd(); ++mod)
 		{
-			if((*mod).enabled)
-				new_mount_order.append((*mod).identifier);
+			if((*mod)->enabled)
+				new_mount_order.append((*mod)->identifier);
 		}
 
 		QJsonObject obj = mods_json_document.object();
@@ -208,5 +225,46 @@ void ModDatabaseFrame::updateModsJson(QString mod_json_file_name)
 		mods_json_file.close();
 	}
 }
+
+void ModDatabaseFrame::disableMod(ModDatabaseFrame::mod_t * mod)
+{
+	if(mod->processed)
+		return;
+
+	mod->processed = true;
+	mod->enabled = false;
+	mod->check_box->setChecked(false);
+	for(QList<mod_t *>::iterator mod2 = mModList.begin(); mod2 != mModList.end(); ++mod2)
+	{
+		for(QStringList::const_iterator dep = (*mod2)->dependencies.constBegin(); dep != (*mod2)->dependencies.constEnd(); ++dep)
+		{
+			if(*dep == mod->identifier)
+			{
+				disableMod(*mod2);
+			}
+		}
+	}
+}
+
+void ModDatabaseFrame::enableMod(ModDatabaseFrame::mod_t * mod)
+{
+	if(mod->processed)
+		return;
+
+	mod->processed = true;
+	mod->enabled = true;
+	mod->check_box->setChecked(true);
+	for(QStringList::const_iterator dep = mod->dependencies.constBegin(); dep != mod->dependencies.constEnd(); ++dep)
+	{
+		for(QList<mod_t *>::iterator mod2 = mModList.begin(); mod2 != mModList.end(); ++mod2)
+		{
+			if((*mod2)->identifier == *dep)
+			{
+				enableMod(*mod2);
+			}
+		}
+	}
+}
+
 
 #include "moddatabaseframe.moc"

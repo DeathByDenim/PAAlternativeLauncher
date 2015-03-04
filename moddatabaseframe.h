@@ -22,14 +22,19 @@ private:
 		QString identifier;
 		int priority;
 		bool enabled;
+		bool processed;
+		QStringList dependencies;
 		QCheckBox *check_box;
 		QString mods_json_file_name;
 	};
-	QList<mod_t> mModList;
+	QList<mod_t *> mModList;
+	bool mIgnoreStateChange;
 
 	QWidget* loadMods(QString mod_dir, QString header, QWidget* parent);
 	void updateModsJson(QString mods_json_file_name);
-	static bool priorityCompare(mod_t m1, mod_t m2) { return (m1.priority > m2.priority); }
+	static bool priorityCompare(mod_t *m1, mod_t *m2) { return (m1->priority > m2->priority); }
+	void enableMod(ModDatabaseFrame::mod_t* mod);
+	void disableMod(ModDatabaseFrame::mod_t* mod);
 
 private slots:
 	void getMoreClicked(bool);
