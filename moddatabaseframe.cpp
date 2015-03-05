@@ -23,12 +23,16 @@ ModDatabaseFrame::ModDatabaseFrame(QWidget* parent)
 	setFrameShadow(QFrame::Raised);
 	setMinimumWidth(50);
 	
+	setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+
 	QVBoxLayout *this_layout = new QVBoxLayout(this);
 
 	QScrollArea *scroll_area = new QScrollArea(this);
+	scroll_area->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
 	scroll_area->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
 	QWidget *main_widget = new QWidget(scroll_area);
+	main_widget->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
 	QVBoxLayout *main_layout = new QVBoxLayout(main_widget);
 
 	QWidget *client_mods_widget = loadMods("client_mods", tr("Client Mods"), main_widget);
@@ -249,9 +253,11 @@ QWidget * ModDatabaseFrame::loadMods(QString mod_dir, QString header, QWidget* p
 		std::sort(mod_list.begin(), mod_list.end(), priorityCompare);
 
 		QWidget *main_widget = new QWidget(parent);
+		main_widget->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
 		QVBoxLayout *main_layout = new QVBoxLayout(main_widget);
 
 		QLabel *header_label = new QLabel(header, main_widget);
+		header_label->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
 		QFont header_font = header_label->font();
 		header_font.setBold(true);
 		header_font.setUnderline(true);
@@ -264,6 +270,7 @@ QWidget * ModDatabaseFrame::loadMods(QString mod_dir, QString header, QWidget* p
 		for(QList<mod_t *>::iterator mod = mod_list.begin(); mod != mod_list.end(); ++mod)
 		{
 			QCheckBox *mod_check_box = new QCheckBox((*mod)->name, main_widget);
+			mod_check_box->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
 			mod_check_box->setChecked((*mod)->enabled);
 			if((*mod)->identifier == "com.pa.deathbydenim.dpamm" || (*mod)->identifier == "com.pa.raevn.pamm")
 				mod_check_box->setEnabled(false);
