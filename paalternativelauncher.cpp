@@ -360,7 +360,7 @@ void PAAlternativeLauncher::streamsComboBoxCurrentIndexChanged(int)
 		mUpdateAvailableLabel->setText(tr("Update from %1 to %2 available").arg(current_version).arg(uber_version));
 
 	mUpdateAvailableLabel->setVisible(uber_version != current_version);
-	
+
 	mModDatabaseFrame->setInstallPath(mInstallPathLineEdit->text());
 	mModDatabaseFrame->setVisible(!mExtraParameters.contains("--nomods"));
 }
@@ -378,6 +378,9 @@ void PAAlternativeLauncher::downloadPushButtonClicked(bool)
 	QString titlefolder = object["TitleFolder"].toString();
 	QString manifestname = object["ManifestName"].toString();
 	QString authsuffix = object["AuthSuffix"].toString();
+
+	QSettings settings;
+	settings.setValue(mStreamsComboBox->currentText() + "/installpath", mInstallPathLineEdit->text());
 
 	if(!downloadurl.isEmpty() && !titlefolder.isEmpty() && !manifestname.isEmpty() && !authsuffix.isEmpty())
 	{

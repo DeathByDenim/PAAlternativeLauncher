@@ -11,6 +11,8 @@
 #include <QMessageBox>
 #include <QApplication>
 
+bool error_occurred = false;
+
 Patcher::Patcher(QNetworkAccessManager *network_access_manager, QObject* parent)
  : QObject(parent), mRawJsonData(NULL)//, mNetworkAccessManager(network_access_manager)
 {

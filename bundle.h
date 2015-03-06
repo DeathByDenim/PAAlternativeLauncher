@@ -14,6 +14,8 @@ class QNetworkReply;
 class QJsonObject;
 class Patcher;
 
+extern bool error_occurred;
+
 class Bundle : public QObject
 {
     Q_OBJECT

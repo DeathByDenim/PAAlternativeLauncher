@@ -1,6 +1,7 @@
 #include "bundle.h"
 #include "patcher.h"
 #include "version.h"
+#include "information.h"
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QDebug>
@@ -90,7 +91,8 @@ void Bundle::verify(QJsonObject* array)
 			{
 				// Except for zero byte files. Just create those.
 				QFile file(mPatcher->getFile(mInstallPath + "/" +file_entry.filename));
-				file.open(QFile::WriteOnly);
+				if(!file.open(QFile::WriteOnly))
+					qDebug() << QString("Couldn't create empty file \"%1\"").arg(file.fileName());
 				file.close();
 			}
 			else
@@ -138,7 +140,7 @@ bool Bundle::verifySHA1(Bundle::File file_entry, bool* downloading)
 	{
 		while(!buffer.atEnd())
 		{
-			if(*downloading)
+			if(*downloading || error_occurred)
 				return false;
 
 			hash.addData(buffer.read(4096));
@@ -184,6 +186,12 @@ void Bundle::downloadReadyRead()
 	QNetworkReply *reply = dynamic_cast<QNetworkReply *>(sender());
 	if(reply)
 	{
+		if(error_occurred)
+		{
+			reply->abort();
+			return;
+		}
+
 		if(reply->error() == QNetworkReply::NoError)
 		{
 			qint64 bytes_available = reply->bytesAvailable();
@@ -335,7 +343,12 @@ void Bundle::prepareFile()
 	file_info.absoluteDir().mkpath(".");
 
 	mCurrentFile = new QFile(file_info.absoluteFilePath());
-	Q_ASSERT(mCurrentFile->open(QFile::WriteOnly));
+	if(!mCurrentFile->open(QFile::WriteOnly))
+	{
+		error_occurred = true;
+		info.critical(tr("Bundle download"), tr("Error occurred while opening file \"%1\"\n%2").arg(mCurrentFile->fileName()).arg(mCurrentFile->errorString()));
+	}
+
 	if(mFiles[mFilesCurrentIndex].executable)
 		mCurrentFile->setPermissions(mCurrentFile->permissions() | QFile::ExeUser | QFile::ExeGroup | QFile::ExeOther);
 

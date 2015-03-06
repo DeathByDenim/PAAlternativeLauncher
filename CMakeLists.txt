@@ -18,6 +18,11 @@ find_package(Qt5Network REQUIRED)
 find_package(Qt5Concurrent REQUIRED)
 find_package(ZLIB REQUIRED)
 
+if(WIN32)
+	set(CMAKE_CXX_FLAGS "-mwindows")
+	set(paalternativelauncher_RCC_SRCS "paalternativelauncher.rc")
+endif(WIN32)
+
 include_directories(${Qt5Core_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR} ${ZLIB_INCLUDE_DIR})
 
 set(paalternativelauncher_SRCS moddatabaseframe.cpp bundle.cpp patcher.cpp paalternativelauncher.cpp main.cpp information.cpp advanceddialog.cpp)
