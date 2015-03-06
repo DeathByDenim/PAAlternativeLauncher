@@ -35,7 +35,7 @@
 
 
 PAAlternativeLauncher::PAAlternativeLauncher()
- : mNetworkAccessManager(new QNetworkAccessManager(NULL))
+ : mNetworkAccessManager(new QNetworkAccessManager(this))
 #if defined(linux)
  , mPlatform("Linux")
 #elif defined(_WIN32)
@@ -384,6 +384,9 @@ void PAAlternativeLauncher::downloadPushButtonClicked(bool)
 
 	if(!downloadurl.isEmpty() && !titlefolder.isEmpty() && !manifestname.isEmpty() && !authsuffix.isEmpty())
 	{
+		mDownloadButton->setEnabled(false);
+		mPatchProgressbar->setEnabled(true);
+
 		mPatchLabel->setText("Downloading manifest");
 
 		prepareZLib();
@@ -399,12 +402,23 @@ void PAAlternativeLauncher::downloadPushButtonClicked(bool)
 
 void PAAlternativeLauncher::patcherDone()
 {
-	QMessageBox::information(this, "Patcher", "Done");
+	mDownloadButton->setEnabled(true);
+	mUpdateAvailableLabel->setVisible(false);
+	mPatchProgressbar->setEnabled(false);
+	mPatcherThread.quit();
+	mNetworkAccessManager = new QNetworkAccessManager(this);
+
+	info.log("Patcher", "Done");
 }
 
 void PAAlternativeLauncher::patcherError(QString error)
 {
-	QMessageBox::critical(this, "Patcher", error);
+	mDownloadButton->setEnabled(true);
+	mPatchProgressbar->setEnabled(false);
+	mPatcherThread.quit();
+	mNetworkAccessManager = new QNetworkAccessManager(this);
+
+	info.critical("Patcher", error);
 }
 
 void PAAlternativeLauncher::patcherProgress(int percentage)
@@ -541,11 +555,6 @@ void PAAlternativeLauncher::advancedPushButtonClicked(bool)
 void PAAlternativeLauncher::patcherStateChange(QString state)
 {
 	mPatchLabel->setText(state);
-	if(state == "Done")
-	{
-		mPatchLabel->setVisible(false);
-		mPatcherThread.quit();
-	}
 }
 
 
@@ -696,9 +705,8 @@ void PAAlternativeLauncher::manifestFinished()
 
 			mNetworkAccessManager->deleteLater();
 
-			mPatcher = new Patcher(mNetworkAccessManager, NULL);
+			mPatcher = new Patcher;
 			mPatcher->moveToThread(&mPatcherThread);
-			mNetworkAccessManager->moveToThread(&mPatcherThread);
 
 			mPatcher->setInstallPath(mInstallPathLineEdit->text());
 			mPatcher->setDownloadUrl(downloadurl + "/" + titlefolder + "/hashed/%1" + authsuffix);

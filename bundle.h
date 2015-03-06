@@ -79,6 +79,7 @@ signals:
 	void downloadProgress(qint64);
 	void verifyDone();
 	void finished();
+	void error(QString error);
 };
 
 #endif // BUNDLE_H

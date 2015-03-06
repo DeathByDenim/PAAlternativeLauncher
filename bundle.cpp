@@ -13,7 +13,6 @@
 #include <QFutureWatcher>
 #include <QCryptographicHash>
 #include <QNetworkReply>
-#include <QMessageBox>
 #include <zlib.h>
 #if !defined(_WIN32)
 #  include <unistd.h>
@@ -147,13 +146,10 @@ bool Bundle::verifySHA1(Bundle::File file_entry, bool* downloading)
 		}
 		if(hash.result().toHex() == file_entry.checksum)
 		{
-//			qDebug() << "Checksum matches for" + file_entry.filename;
 			return true;
 		}
 		else
 		{
-			qDebug() << "Checksum FAILED for" + file_entry.filename;
-			qDebug() << file_entry.checksum << "!=" << hash.result().toHex();
 			*downloading = true;
 			return false;
 		}
@@ -220,14 +216,17 @@ void Bundle::downloadReadyRead()
 		else
 		{
 			if(reply->error() != QNetworkReply::OperationCanceledError)
-				QMessageBox::critical(NULL, tr("Bundle"), tr("Error while getting Bundle (1).\n%1").arg(reply->errorString()));
+			{
+				emit error(tr("Error while getting Bundle (1).\n%1").arg(reply->errorString()));
+				error_occurred = true;
+			}
 		}
 	}
 }
 
 void Bundle::processData(QNetworkReply *reply, qint64 bytes_available)
 {
-	if(bytes_available == 0)
+	if(bytes_available == 0 || error_occurred)
 		return;
 
 	QByteArray input = reply->read(bytes_available);
@@ -245,8 +244,9 @@ void Bundle::processData(QNetworkReply *reply, qint64 bytes_available)
 			res = inflate(&mZstream, Z_SYNC_FLUSH);
 			if(res != Z_OK && res != Z_STREAM_END)
 			{
+				error_occurred = true;
 				reply->abort();
-				QMessageBox::warning(NULL, "ZLib", QString("ReadyRead error (%1)\n%2").arg(res).arg(mZstream.msg));
+				emit error(QString("ZLib ReadyRead error (%1)\n%2").arg(res).arg(mZstream.msg));
 				return;
 			}
 
@@ -265,17 +265,19 @@ void Bundle::processData(QNetworkReply *reply, qint64 bytes_available)
 
 void Bundle::downloadFinished()
 {
+	if(error_occurred)
+		return;
+
 	QNetworkReply *reply = dynamic_cast<QNetworkReply *>(sender());
 	if(reply)
 	{
-		if(reply->error() == QNetworkReply::NoError)
-		{
-			qDebug() << "Download successful";
-		}
-		else
+		if(reply->error() != QNetworkReply::NoError)
 		{
 			if(reply->error() != QNetworkReply::OperationCanceledError)
-				QMessageBox::critical(NULL, tr("Bundle"), tr("Error while getting Bundle (2).\n%1").arg(reply->errorString()));
+			{
+				error_occurred = true;
+				emit error(tr("Error while getting Bundle (2).\n%1").arg(reply->errorString()));
+			}
 			reply->deleteLater();
 			return;
 		}
@@ -285,8 +287,9 @@ void Bundle::downloadFinished()
 			int res = inflateEnd(&mZstream);
 			if(res != Z_OK && res != Z_STREAM_END)
 			{
+				error_occurred = true;
 				reply->abort();
-				QMessageBox::warning(NULL, "ZLib", QString("downloadFinished error (%1)\n%2").arg(res).arg(mZstream.msg));
+				emit error(QString("ZLib downloadFinished error (%1)\n%2").arg(res).arg(mZstream.msg));
 				return;
 			}
 		}
@@ -331,7 +334,8 @@ void Bundle::prepareZLib()
 	int res = inflateInit2(&mZstream, 16 + MAX_WBITS);
 	if(res != Z_OK)
 	{
-		QMessageBox::critical(NULL, "ZLib", QString("prepareZLib error (%1)\n%2").arg(res).arg(mZstream.msg));
+		error_occurred = true;
+		emit error(QString("prepareZLib error (%1)\n%2").arg(res).arg(mZstream.msg));
 		return;
 	}
 }
@@ -346,7 +350,7 @@ void Bundle::prepareFile()
 	if(!mCurrentFile->open(QFile::WriteOnly))
 	{
 		error_occurred = true;
-		info.critical(tr("Bundle download"), tr("Error occurred while opening file \"%1\"\n%2").arg(mCurrentFile->fileName()).arg(mCurrentFile->errorString()));
+		emit error(tr("Error occurred while opening file \"%1\"\n%2").arg(mCurrentFile->fileName()).arg(mCurrentFile->errorString()));
 	}
 
 	if(mFiles[mFilesCurrentIndex].executable)
@@ -369,8 +373,8 @@ void Bundle::nextFile()
 			int res = inflateEnd(&mZstream);
 			if(res != Z_OK && res != Z_STREAM_END)
 			{
-//				reply->abort();
-				QMessageBox::warning(NULL, "ZLib", QString("downloadFinished error (%1)\n%2").arg(res).arg(mZstream.msg));
+				error_occurred = true;
+				emit error(QString("ZLib nextFile error (%1)\n%2").arg(res).arg(mZstream.msg));
 				return;
 			}
 		}
@@ -415,7 +419,6 @@ bool Bundle::createSymbolicLink(const QString& from, const QString& to)
 	int res = symlink(path1.join("/").toStdString().c_str(), (mInstallPath + "/" + to).toStdString().c_str());
 	if(res != 0)
 	{
-		qDebug() << strerror(errno);
 		return false;
 	}
 #endif

@@ -12,7 +12,7 @@ class Patcher : public QObject
     Q_OBJECT
 
 public:
-	Patcher(QNetworkAccessManager *network_access_manager, QObject * parent = 0);
+	Patcher(QObject* parent = 0);
 	~Patcher();
 
 	void setInstallPath(QString install_path) {mInstallPath = install_path;}
@@ -47,6 +47,7 @@ private slots:
     void bundleDownloadProgress(qint64);
     void bundleVerifyDone();
     void bundleFinished();
+    void bundleError(QString error);
 	
 public slots:
     void parseManifest();

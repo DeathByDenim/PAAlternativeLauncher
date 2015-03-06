@@ -13,8 +13,8 @@
 
 bool error_occurred = false;
 
-Patcher::Patcher(QNetworkAccessManager *network_access_manager, QObject* parent)
- : QObject(parent), mRawJsonData(NULL)//, mNetworkAccessManager(network_access_manager)
+Patcher::Patcher(QObject* parent)
+ : QObject(parent), mRawJsonData(NULL)
 {
 }
 
@@ -71,6 +71,7 @@ void Patcher::startVerifying()
 			connect(bundle, SIGNAL(downloadProgress(qint64)), SLOT(bundleDownloadProgress(qint64)));
 			connect(bundle, SIGNAL(verifyDone()), SLOT(bundleVerifyDone()));
 			connect(bundle, SIGNAL(finished()), SLOT(bundleFinished()));
+			connect(bundle, SIGNAL(error(QString)), SLOT(bundleError(QString)));
 			bundle->verify(&bundle_json_object);
 		}
 	}
@@ -128,7 +129,16 @@ void Patcher::bundleFinished()
 {
 	mBundlesFinished++;
 	if(mBundlesFinished == mNumBundles)
+	{
 		emit stateChange("Done");
+		emit done();
+	}
+}
+
+void Patcher::bundleError(QString error_string)
+{
+	emit stateChange("Error occurred");
+	emit error(error_string);
 }
 
 
