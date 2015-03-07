@@ -40,6 +40,9 @@ void Bundle::verify(QJsonObject* array)
 {
 	Q_ASSERT(array != NULL);
 
+	mNumVerified = 0;
+	mNumToVerify = 0;
+	
 	mChecksum = (*array)["checksum"].toString();
 	mTotalSize = (*array)["size"].toString().toULong();
 	QJsonArray entries = (*array)["entries"].toArray();
@@ -99,30 +102,16 @@ void Bundle::verify(QJsonObject* array)
 		}
 		else
 		{
+			mNumToVerify++;
+
 			// Check the SHA1 checksum.
 			file_entry.future = QtConcurrent::run(verifySHA1, file_entry, &mNeedsDownloading);
+			QFutureWatcher<bool> *watcher = new QFutureWatcher<bool>(this);
+			watcher->setFuture(file_entry.future);
+			connect(watcher, SIGNAL(finished()), SLOT(verifyFinished()));
 		}
 
 		mFiles.push_back(file_entry);
-	}
-
-	for(QList<File>::iterator f = mFiles.begin(); f != mFiles.end(); ++f)
-		(*f).future.waitForFinished();
-
-	emit verifyDone();
-
-	if(mNeedsDownloading)
-		emit downloadMe();
-	else
-	{
-#ifdef _WIN32
-		for(QMap<QString,QString>::const_iterator symlink = mCopyLater.constBegin(); symlink != mCopyLater.constEnd(); ++symlink)
-		{
-			QFile from_file(symlink.key());
-			from_file.copy(symlink.value());
-		}
-#endif
-		emit finished();
 	}
 }
 
@@ -144,6 +133,10 @@ bool Bundle::verifySHA1(Bundle::File file_entry, bool* downloading)
 
 			hash.addData(buffer.read(4096));
 		}
+		buffer.close();
+		delete file_entry.data_on_disk;
+		file_entry.data_on_disk = NULL;
+
 		if(hash.result().toHex() == file_entry.checksum)
 		{
 			return true;
@@ -156,6 +149,31 @@ bool Bundle::verifySHA1(Bundle::File file_entry, bool* downloading)
 	}
 	else
 		return false;//FATAL
+}
+
+void Bundle::verifyFinished()
+{
+	mNumVerified++;
+	qDebug() << mChecksum << ": finished" << mNumVerified << "of" << mNumToVerify;
+	if(mNumToVerify == mNumVerified)
+	{
+		emit verifyDone();
+
+		if(mNeedsDownloading)
+			emit downloadMe();
+		else
+		{
+#ifdef _WIN32
+			for(QMap<QString,QString>::const_iterator symlink = mCopyLater.constBegin(); symlink != mCopyLater.constEnd(); ++symlink)
+			{
+				QFile from_file(symlink.key());
+				from_file.copy(symlink.value());
+			}
+#endif
+			qDebug() << "Finished verify of" << mChecksum;
+			emit finished();
+		}
+	}
 }
 
 void Bundle::downloadAndExtract(QNetworkAccessManager* network_access_manager, QString download_url)

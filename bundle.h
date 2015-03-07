@@ -45,6 +45,8 @@ private:
 
 	ulong mTotalSize;
 	QList<File> mFiles;
+	int mNumVerified;
+	int mNumToVerify;
 	QString mInstallPath;
 	Patcher *mPatcher;
 	bool mNeedsDownloading;
@@ -70,6 +72,7 @@ private:
 	bool createEmptyFile(const QString& file_name);
 
 private slots:
+	void verifyFinished();
 	void downloadFinished();
     void downloadReadyRead();
     void downloadProgress(qint64,qint64);

@@ -65,6 +65,7 @@ private:
 	QWidget * createWaitWidget(QWidget * parent);
 	void setState(EState state);
 	QString currentInstalledVersion();
+	quint64 getFreeDiskspaceInMB(QString directory);
 
 private slots:
     void loginPushButtonClicked(bool);

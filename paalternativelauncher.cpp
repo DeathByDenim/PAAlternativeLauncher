@@ -23,8 +23,13 @@
 #include <QSettings>
 #include <QFileDialog>
 #include <QProcess>
-
-//#include <QDebug>
+#if defined(linux) || defined(__APPLE__)
+#  include <sys/statvfs.h>
+#  include <sys/errno.h>
+#elif defined(_WIN32)
+#  include <QProcessEnvironment>
+#  include <windows.h>
+#endif
 #include <QFile>
 #include <zlib.h>
 #include "information.h"
@@ -382,6 +387,13 @@ void PAAlternativeLauncher::downloadPushButtonClicked(bool)
 	QSettings settings;
 	settings.setValue(mStreamsComboBox->currentText() + "/installpath", mInstallPathLineEdit->text());
 
+	quint64 freespace = getFreeDiskspaceInMB(mInstallPathLineEdit->text());
+	if(freespace < 1024)
+	{
+		if(!info.warning(tr("Available disk space"), tr("Only %1 MB available. Continue anyway?").arg(freespace)))
+			return;
+	}
+
 	if(!downloadurl.isEmpty() && !titlefolder.isEmpty() && !manifestname.isEmpty() && !authsuffix.isEmpty())
 	{
 		mDownloadButton->setEnabled(false);
@@ -554,6 +566,9 @@ void PAAlternativeLauncher::advancedPushButtonClicked(bool)
 
 void PAAlternativeLauncher::patcherStateChange(QString state)
 {
+	if(state != "Done" && state != "Error occurred")
+		mPatchProgressbar->setValue(0);
+
 	mPatchLabel->setText(state);
 }
 
@@ -817,6 +832,29 @@ QString PAAlternativeLauncher::currentInstalledVersion()
 	}
 	else
 		return "";
+}
+
+quint64 PAAlternativeLauncher::getFreeDiskspaceInMB(QString directory)
+{
+	QByteArray dir = directory.toUtf8();
+#if defined(linux) || defined(__APPLE__)
+	struct statvfs diskinfo;
+	int rc = statvfs(dir.constData(), &diskinfo);
+	if(rc != 0)
+	{
+		info.log(tr("Disk space"), QString("could not be determined (%1)").arg(errno));
+		return ULONG_MAX;
+	}
+	return (diskinfo.f_bavail / 1024) * (diskinfo.f_bsize / 1024);
+#elif defined(_WIN32)
+	ULARGE_INTEGER FreeBytesAvailable, TotalNumberOfBytes, TotalNumberOfFreeBytes;
+	if(GetDiskFreeSpaceEx(dir.constData(), &FreeBytesAvailable, &TotalNumberOfBytes, &TotalNumberOfFreeBytes))
+	{
+		return FreeBytesAvailable.QuadPart / (1024*1024);
+	}
+#endif
+
+	return ULONG_MAX;
 }
 
 #include "paalternativelauncher.moc"
