@@ -43,10 +43,13 @@ PAAlternativeLauncher::PAAlternativeLauncher()
  : mNetworkAccessManager(new QNetworkAccessManager(this))
 #if defined(linux)
  , mPlatform("Linux")
+ , mDefaultInstallPath("~/Games/PA")
 #elif defined(_WIN32)
  , mPlatform("Windows")
+ , mDefaultInstallPath("C:\\Games\\PA")
 #elif defined(__APPLE__)
  , mPlatform("OSX")
+ , mDefaultInstallPath("/Applications/Planetary Annihilation")
 #else
 # error Not a supported os
 #endif
@@ -352,7 +355,11 @@ void PAAlternativeLauncher::streamsComboBoxCurrentIndexChanged(int)
 	mPatchTextBrowser->setHtml(mStreamNews[current_stream]);
 
 	QSettings settings;
-	mInstallPathLineEdit->setText(settings.value(current_stream + "/installpath").toString());
+	QString install_path = settings.value(current_stream + "/installpath").toString();
+	if(install_path.isEmpty())
+		install_path = mDefaultInstallPath;
+
+	mInstallPathLineEdit->setText(install_path);
 	mExtraParameters = settings.value(current_stream + "/extraparameters").toString();
 	mUseOptimus = (AdvancedDialog::optimus_t)settings.value(current_stream + "/useoptirun").toInt();
 
@@ -366,14 +373,14 @@ void PAAlternativeLauncher::streamsComboBoxCurrentIndexChanged(int)
 
 	mUpdateAvailableLabel->setVisible(uber_version != current_version);
 
-	mModDatabaseFrame->setInstallPath(mInstallPathLineEdit->text());
+	mModDatabaseFrame->setInstallPath(install_path);
 	mModDatabaseFrame->setVisible(!mExtraParameters.contains("--nomods"));
 }
 
 void PAAlternativeLauncher::installPathButtonClicked(bool)
 {
-	QString installPath = QFileDialog::getExistingDirectory(this, tr("Choose installation directory"), mInstallPathLineEdit->text(), QFileDialog::ShowDirsOnly);
-	mInstallPathLineEdit->setText(installPath);
+	QString install_path = QFileDialog::getExistingDirectory(this, tr("Choose installation directory"), mInstallPathLineEdit->text(), QFileDialog::ShowDirsOnly);
+	mInstallPathLineEdit->setText(install_path);
 }
 
 void PAAlternativeLauncher::downloadPushButtonClicked(bool)

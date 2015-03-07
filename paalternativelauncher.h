@@ -35,6 +35,7 @@ private:
 
 	QNetworkAccessManager *mNetworkAccessManager;
 	const QString mPlatform;
+	const QString mDefaultInstallPath;
 	QString mSessionTicket;
 	z_stream mZstream;
 	const qint64 mBufferSize;
