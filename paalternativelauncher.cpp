@@ -583,7 +583,9 @@ void PAAlternativeLauncher::advancedPushButtonClicked(bool)
 
 void PAAlternativeLauncher::patcherStateChange(QString state)
 {
-	if(state != "Done" && state != "Error occurred")
+	if(state == "Done")
+		mPatchProgressbar->setValue(100);
+	else if(state != "Error occurred")
 		mPatchProgressbar->setValue(0);
 
 	mPatchLabel->setText(state);

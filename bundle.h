@@ -39,7 +39,6 @@ private:
 		ulong sizeZ;
 		bool executable;
 		bool verified;
-		QByteArray *data_on_disk;
 		QFuture<bool> future;
 	};
 
@@ -63,7 +62,7 @@ private:
 	QMap<QString,QString> mCopyLater;
 #endif
 
-	static bool verifySHA1(Bundle::File file_entry, bool *downloading);
+	static bool verifySHA1(Bundle::File file_entry, bool* downloading, Patcher* patcher, QString install_path);
 	void prepareZLib();
     void prepareFile();
     void nextFile();

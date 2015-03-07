@@ -56,7 +56,6 @@ void Bundle::verify(QJsonObject* array)
 		file_entry.size = (*e).toObject()["size"].toString().toULong();
 		file_entry.sizeZ = (*e).toObject()["sizeZ"].toString().toULong();
 		file_entry.executable = (*e).toObject()["executable"].toBool();
-		file_entry.data_on_disk = NULL;
 
 		if(file_entry.size == 0)
 		{
@@ -78,6 +77,19 @@ void Bundle::verify(QJsonObject* array)
 		if(was_symlinked)
 			continue;
 
+		if(file_entry.size == 0)
+		{
+			// Zero byte files. Just create those.
+			QFile file(mPatcher->getFile(mInstallPath + "/" +file_entry.filename));
+			if(!file.open(QFile::WriteOnly))
+			{
+				error_occurred = true;
+				emit error(tr("Couldn't create empty file \"%1\"").arg(file.fileName()));
+			}
+			file.close();
+			continue;
+		}
+
 		if(mNeedsDownloading)
 		{
 			// No need to check files if we already know we need to download.
@@ -85,45 +97,35 @@ void Bundle::verify(QJsonObject* array)
 			continue;
 		}
 
-		file_entry.data_on_disk = new QByteArray(mPatcher->getFile(mInstallPath + "/" +file_entry.filename));
-		if(file_entry.data_on_disk->isNull())
-		{
-			// File does not exist. Therefore this bundle needs to be downloaded.
-			if(file_entry.size == 0)
-			{
-				// Except for zero byte files. Just create those.
-				QFile file(mPatcher->getFile(mInstallPath + "/" +file_entry.filename));
-				if(!file.open(QFile::WriteOnly))
-					qDebug() << QString("Couldn't create empty file \"%1\"").arg(file.fileName());
-				file.close();
-			}
-			else
-				mNeedsDownloading = true;
-		}
-		else
-		{
-			mNumToVerify++;
+		mNumToVerify++;
 
-			// Check the SHA1 checksum.
-			file_entry.future = QtConcurrent::run(verifySHA1, file_entry, &mNeedsDownloading);
-			QFutureWatcher<bool> *watcher = new QFutureWatcher<bool>(this);
-			watcher->setFuture(file_entry.future);
-			connect(watcher, SIGNAL(finished()), SLOT(verifyFinished()));
-		}
+		// Check the SHA1 checksum.
+		file_entry.future = QtConcurrent::run(verifySHA1, file_entry, &mNeedsDownloading, mPatcher, mInstallPath);
+		QFutureWatcher<bool> *watcher = new QFutureWatcher<bool>(this);
+		watcher->setFuture(file_entry.future);
+		connect(watcher, SIGNAL(finished()), SLOT(verifyFinished()));
 
 		mFiles.push_back(file_entry);
 	}
 }
 
-bool Bundle::verifySHA1(Bundle::File file_entry, bool* downloading)
+bool Bundle::verifySHA1(Bundle::File file_entry, bool* downloading, Patcher *patcher, QString install_path)
 {
 	if(*downloading)
 		// No need to verify the SHA1 if we are already downloading;
 		return false;
 
+	QByteArray data_on_disk(patcher->getFile(install_path + "/" +file_entry.filename));
+	if(data_on_disk.isNull())
+	{
+		// File does not exist. Therefore this bundle needs to be downloaded.
+		*downloading = true;
+		return false;
+	}
+
 	QCryptographicHash hash(QCryptographicHash::Sha1);
 
-	QBuffer buffer(file_entry.data_on_disk);
+	QBuffer buffer(&data_on_disk);
 	if(buffer.open(QBuffer::ReadOnly))
 	{
 		while(!buffer.atEnd())
@@ -134,8 +136,6 @@ bool Bundle::verifySHA1(Bundle::File file_entry, bool* downloading)
 			hash.addData(buffer.read(4096));
 		}
 		buffer.close();
-		delete file_entry.data_on_disk;
-		file_entry.data_on_disk = NULL;
 
 		if(hash.result().toHex() == file_entry.checksum)
 		{
