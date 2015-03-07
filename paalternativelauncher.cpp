@@ -43,7 +43,7 @@ PAAlternativeLauncher::PAAlternativeLauncher()
  : mNetworkAccessManager(new QNetworkAccessManager(this))
 #if defined(linux)
  , mPlatform("Linux")
- , mDefaultInstallPath("~/Games/PA")
+ , mDefaultInstallPath(QDir::homePath() + "/Games/PA")
 #elif defined(_WIN32)
  , mPlatform("Windows")
  , mDefaultInstallPath("C:\\Games\\PA")
@@ -357,7 +357,11 @@ void PAAlternativeLauncher::streamsComboBoxCurrentIndexChanged(int)
 	QSettings settings;
 	QString install_path = settings.value(current_stream + "/installpath").toString();
 	if(install_path.isEmpty())
-		install_path = mDefaultInstallPath;
+#ifdef _WIN32
+		install_path = mDefaultInstallPath + "\\" + current_stream;;
+#else
+		install_path = mDefaultInstallPath + "/" + current_stream;;
+#endif
 
 	mInstallPathLineEdit->setText(install_path);
 	mExtraParameters = settings.value(current_stream + "/extraparameters").toString();
