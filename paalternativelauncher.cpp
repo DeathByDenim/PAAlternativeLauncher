@@ -387,6 +387,12 @@ void PAAlternativeLauncher::downloadPushButtonClicked(bool)
 	QSettings settings;
 	settings.setValue(mStreamsComboBox->currentText() + "/installpath", mInstallPathLineEdit->text());
 
+#ifdef _WIN32
+	// Pamm or Pahub on Windows may use this registry setting.
+	QSettings win32settings(QSettings::SystemScope, "Uber Entertainment", "Planetary Annihilation");
+	win32settings.setValue("InstallDirectory", mInstallPathLineEdit->text());
+#endif
+
 	quint64 freespace = getFreeDiskspaceInMB(mInstallPathLineEdit->text());
 	if(freespace < 1024)
 	{
