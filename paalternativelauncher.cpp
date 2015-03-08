@@ -377,7 +377,6 @@ void PAAlternativeLauncher::streamsComboBoxCurrentIndexChanged(int)
 
 	mUpdateAvailableLabel->setVisible(uber_version != current_version);
 
-	mModDatabaseFrame->setInstallPath(install_path);
 	mModDatabaseFrame->setVisible(!mExtraParameters.contains("--nomods"));
 }
 
