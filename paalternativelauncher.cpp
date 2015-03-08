@@ -388,7 +388,8 @@ void PAAlternativeLauncher::streamsComboBoxCurrentIndexChanged(int)
 void PAAlternativeLauncher::installPathButtonClicked(bool)
 {
 	QString install_path = QFileDialog::getExistingDirectory(this, tr("Choose installation directory"), mInstallPathLineEdit->text(), QFileDialog::ShowDirsOnly);
-	mInstallPathLineEdit->setText(install_path);
+    if(!install_path.isEmpty())
+        mInstallPathLineEdit->setText(install_path);
 }
 
 void PAAlternativeLauncher::downloadPushButtonClicked(bool)
