@@ -192,15 +192,20 @@ QWidget* PAAlternativeLauncher::createLoginWidget(QWidget *parent)
 	font.setPointSizeF(3*font.pointSizeF());
 	login_label->setFont(font);
 	login_label->setAlignment(Qt::AlignCenter);
+    login_label->setPalette(palette);
 	main_layout->addRow(login_label);
 
 	mUserNameLineEdit = new QLineEdit(main_widget);
-	main_layout->addRow(tr("Uber ID"), mUserNameLineEdit);
+    QLabel *user_name_label = new QLabel(tr("Uber ID"), main_widget);
+    user_name_label->setPalette(palette);
+    main_layout->addRow(user_name_label, mUserNameLineEdit);
 
 	mPasswordLineEdit = new QLineEdit(main_widget);
 	mPasswordLineEdit->setEchoMode(QLineEdit::Password);
+    QLabel *password_label = new QLabel(tr("Password"), main_widget);
+    password_label->setPalette(palette);
 	connect(mPasswordLineEdit, SIGNAL(returnPressed()), SLOT(passwordLineEditReturnPressed()));
-	main_layout->addRow(tr("Password"), mPasswordLineEdit);
+    main_layout->addRow(password_label, mPasswordLineEdit);
 
 	QPushButton *login_button = new QPushButton(tr("Login"), main_widget);
 	main_layout->addRow(login_button);
