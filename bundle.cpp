@@ -4,7 +4,6 @@
 #include "information.h"
 #include <QJsonArray>
 #include <QJsonObject>
-#include <QDebug>
 #include <QFile>
 #include <QFileInfo>
 #include <QDir>
@@ -154,7 +153,6 @@ bool Bundle::verifySHA1(Bundle::File file_entry, bool* downloading, Patcher *pat
 void Bundle::verifyFinished()
 {
 	mNumVerified++;
-	qDebug() << mChecksum << ": finished" << mNumVerified << "of" << mNumToVerify;
 	if(mNumToVerify == mNumVerified)
 	{
 		emit verifyDone();
@@ -170,7 +168,6 @@ void Bundle::verifyFinished()
 				from_file.copy(symlink.value());
 			}
 #endif
-			qDebug() << "Finished verify of" << mChecksum;
 			emit finished();
 		}
 	}

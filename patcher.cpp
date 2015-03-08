@@ -3,7 +3,6 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
-#include <QDebug>
 #include <QFile>
 #include <QUrl>
 #include <QNetworkAccessManager>

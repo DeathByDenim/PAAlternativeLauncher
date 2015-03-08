@@ -8,12 +8,14 @@
 #include <QStandardPaths>
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QDebug>
 #include <QJsonArray>
 #include <QDesktopServices>
 #include <QUrl>
 #include <QCheckBox>
 #include <QScrollArea>
+#include <QMap>
+#include <QFile>
+#include <QTextStream>
 #include <algorithm>
 
 ModDatabaseFrame::ModDatabaseFrame(QWidget* parent)
@@ -409,7 +411,6 @@ void ModDatabaseFrame::updateModFiles(QString mod_json_file_name, mod_type type)
 		obj.remove("mount_order");
 		obj.insert("mount_order", new_mount_order);
 		mods_json_document.setObject(obj);
-		qDebug() << mods_json_document;
 		mods_json_file.seek(0);
 		mods_json_file.resize(0);
 		mods_json_file.write(mods_json_document.toJson());
