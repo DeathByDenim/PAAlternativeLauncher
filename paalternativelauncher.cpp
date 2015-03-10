@@ -394,6 +394,13 @@ void PAAlternativeLauncher::installPathButtonClicked(bool)
 
 void PAAlternativeLauncher::downloadPushButtonClicked(bool)
 {
+	if(mInstallPathLineEdit->text().isEmpty())
+	{
+		info.critical(tr("Download"), tr("Install path is empty."));
+		mInstallPathLineEdit->setFocus();
+		return;
+	}
+
 	QVariantMap object = mStreamsComboBox->currentData().toMap();
 	QString downloadurl = object["DownloadUrl"].toString();
 	QString titlefolder = object["TitleFolder"].toString();
@@ -468,6 +475,13 @@ void PAAlternativeLauncher::launchOfflinePushButtonClicked(bool)
 	mExtraParameters = settings.value("stable/extraparameters").toString();
 	mUseOptimus = (AdvancedDialog::optimus_t)settings.value("stable/useoptirun").toInt();
 
+	if(install_path.isEmpty())
+	{
+		info.critical(tr("Launch offline"), tr("Install path is empty. It looks like this launcher never downloaded PA.\nPlease log in and download PA."));
+		return;
+	}
+
+	
 	QString command;
 	QStringList parameters;
 
@@ -511,6 +525,13 @@ void PAAlternativeLauncher::launchOfflinePushButtonClicked(bool)
 
 void PAAlternativeLauncher::launchPushButtonClicked(bool)
 {
+	if(mInstallPathLineEdit->text().isEmpty())
+	{
+		info.critical(tr("Launch"), tr("Install path is empty."));
+		mInstallPathLineEdit->setFocus();
+		return;
+	}
+
 	QString command;
 	QStringList parameters;
 
