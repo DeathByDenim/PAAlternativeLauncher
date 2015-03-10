@@ -80,7 +80,7 @@ QWidget * ModDatabaseFrame::loadMods(QString mod_dir, ModDatabaseFrame::mod_type
 #elif defined(__APPLE__)
 	const QString local_pa_dir(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + "/Uber Entertainment/Planetary Annihilation");
 #elif defined(_WIN32)
-	const QString local_pa_dir(QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation) + "\\Uber Entertainment\\Planetary Annihilation");
+	const QString local_pa_dir(QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + "\\Uber Entertainment\\Planetary Annihilation");
 #else
 #	error Not a supported os
 #endif
