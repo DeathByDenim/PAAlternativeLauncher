@@ -46,7 +46,7 @@ PAAlternativeLauncher::PAAlternativeLauncher()
  , mDefaultInstallPath(QDir::homePath() + "/Games/PA")
 #elif defined(_WIN32)
  , mPlatform("Windows")
- , mDefaultInstallPath("C:\\Games\\PA")
+ , mDefaultInstallPath("C:\\Games\\Uber Entertainment\\Planetary Annihilation Launcher\\Planetary Annihilation")
 #elif defined(__APPLE__)
  , mPlatform("OSX")
  , mDefaultInstallPath("/Applications/Planetary Annihilation")
@@ -477,8 +477,12 @@ void PAAlternativeLauncher::launchOfflinePushButtonClicked(bool)
 
 	if(install_path.isEmpty())
 	{
+#ifdef _WIN32
+		install_path = mDefaultInstallPath + "\\stable";
+#else
 		info.critical(tr("Launch offline"), tr("Install path is empty. It looks like this launcher never downloaded PA.\nPlease log in and download PA."));
 		return;
+#endif
 	}
 
 	

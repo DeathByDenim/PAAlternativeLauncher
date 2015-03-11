@@ -36,7 +36,7 @@ private:
 	QList<mod_t *> mModList;
 	bool mIgnoreStateChange;
 
-	QWidget* loadMods(QString mod_dir, mod_type type, QWidget* parent);
+	QWidget* loadMods(ModDatabaseFrame::mod_type type, QWidget* parent);
 	void updateModFiles(QString mod_json_file_name, ModDatabaseFrame::mod_type type);
 	static bool priorityCompare(mod_t *m1, mod_t *m2) { return (m1->priority > m2->priority); }
 	void enableMod(ModDatabaseFrame::mod_t* mod);

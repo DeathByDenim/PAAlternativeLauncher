@@ -37,14 +37,11 @@ ModDatabaseFrame::ModDatabaseFrame(QWidget* parent)
 	main_widget->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
 	QVBoxLayout *main_layout = new QVBoxLayout(main_widget);
 
-	QWidget *client_mods_widget = loadMods("client_mods", client_mod, main_widget);
-	if(client_mods_widget == NULL)
-		client_mods_widget = loadMods("mods", client_mod, main_widget);
-
+	QWidget *client_mods_widget = loadMods(client_mod, main_widget);
 	if(client_mods_widget)
 		main_layout->addWidget(client_mods_widget);
 
-	QWidget *server_mods_widget = loadMods("server_mods", server_mod, main_widget);
+	QWidget *server_mods_widget = loadMods(server_mod, main_widget);
 	if(server_mods_widget)
 		main_layout->addWidget(server_mods_widget);
 	
@@ -73,7 +70,7 @@ void ModDatabaseFrame::getMoreClicked(bool)
 	QDesktopServices::openUrl(QUrl("https://forums.uberent.com/threads/rel-pa-mod-manager-cross-platform.59992/"));
 }
 
-QWidget * ModDatabaseFrame::loadMods(QString mod_dir, ModDatabaseFrame::mod_type type, QWidget* parent)
+QWidget * ModDatabaseFrame::loadMods(ModDatabaseFrame::mod_type type, QWidget* parent)
 {
 #if defined(linux)
 	const QString local_pa_dir(QDir::homePath() + "/.local/Uber Entertainment/Planetary Annihilation");
@@ -87,8 +84,27 @@ QWidget * ModDatabaseFrame::loadMods(QString mod_dir, ModDatabaseFrame::mod_type
 
 	QList<mod_t *> mod_list;
 	QJsonArray enabled_mods;
+	QString mod_dir;
+	QString mods_json_file_name;
+	
+	switch(type)
+	{
+		case server_mod:
+			mod_dir = "server_mods";
+			mods_json_file_name = local_pa_dir + "/" + mod_dir + "/mods.json";
+			break;
+		case client_mod:
+			mod_dir = "client_mods";
+			mods_json_file_name = local_pa_dir + "/" + mod_dir + "/mods.json";
+			if(!QFileInfo(mods_json_file_name).exists())
+			{
+				mod_dir = "mods";
+				mods_json_file_name = local_pa_dir + "/" + mod_dir + "/mods.json";
+			}
+			break;
+	}
 
-	QFile mods_json_file(local_pa_dir + "/" + mod_dir + "/mods.json");
+	QFile mods_json_file(mods_json_file_name);
 	if(mods_json_file.open(QFile::ReadOnly))
 	{
 		enabled_mods = QJsonDocument::fromJson(mods_json_file.readAll()).object()["mount_order"].toArray();
@@ -280,6 +296,19 @@ QWidget * ModDatabaseFrame::loadMods(QString mod_dir, ModDatabaseFrame::mod_type
 		stockmod = new mod_t;
 		stockmod->identifier = "com.uberent.pa.mods.stockmods.server.cheat.allow_mod_data_updates";
 		stockmod->name = "Cheat - Allow Mod Data Updates";
+		stockmod->mods_json_file_name = local_pa_dir + "/" + mod_dir + "/mods.json";
+		stockmod->type = server_mod;
+		stockmod->enabled = false;
+		stockmod->priority = 100;
+		stockmod->processed = false;
+		stockmod->check_box = NULL;
+		mod_list.push_back(stockmod);
+	}
+	else if(type == client_mod)
+	{
+		mod_t *stockmod = new mod_t;
+		stockmod->identifier = "com.uberent.pa.mods.stockmods.client.cheat.server_browser_show_cheat_servers";
+		stockmod->name = "Server Browser - Show Cheat Servers";
 		stockmod->mods_json_file_name = local_pa_dir + "/" + mod_dir + "/mods.json";
 		stockmod->type = server_mod;
 		stockmod->enabled = false;
