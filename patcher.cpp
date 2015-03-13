@@ -186,9 +186,9 @@ void Patcher::processSymLinks()
 					target_file.remove();
 
 #ifdef _WIN32
-				if(!from_file.copy(symlink.key()))
+				if(!source_file.copy(slink.key()))
 				{
-					emit error(tr("Error copying duplicate file \"%1\" to \"%2\".\n%3").arg(symlink.value()).arg(symlink.value()).arg(from_file.errorString()));
+					emit error(tr("Error copying duplicate file \"%1\" to \"%2\".\n%3").arg(slink.value()).arg(slink.value()).arg(source_file.errorString()));
 					return;
 				}
 #else
