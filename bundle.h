@@ -28,6 +28,7 @@ public:
 	QString checksum() {return mChecksum;}
 	qint64 totalSize() {return mTotalSize;}
 	void downloadAndExtract(QNetworkAccessManager* network_access_manager, QString download_url);
+	const QMap<QString,QString> & symLinks() {return mSymLinkLater;}
 
 private:
 	struct File
@@ -58,9 +59,7 @@ private:
 	QFile *mCurrentFile;
 	bool mCurrentFileIsGzipped;
 	int mFilesCurrentIndex;
-#if defined(_WIN32)
-	QMap<QString,QString> mCopyLater;
-#endif
+	QMap<QString,QString> mSymLinkLater;
 
 	static bool verifySHA1(Bundle::File file_entry, bool* downloading, Patcher* patcher, QString install_path);
 	void prepareZLib();

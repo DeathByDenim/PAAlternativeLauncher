@@ -4,6 +4,7 @@
 #include <QObject>
 #include <QJsonDocument>
 #include <QMutex>
+#include <QMap>
 
 class QNetworkAccessManager;
 
@@ -16,7 +17,7 @@ public:
 	~Patcher();
 
 	void setInstallPath(QString install_path) {mInstallPath = install_path;}
-    void setDownloadUrl(QString url) {mDownloadUrl = url;}
+	void setDownloadUrl(QString url) {mDownloadUrl = url;}
 	void giveJsonData(QByteArray data);
 	QByteArray getFile(QString filename);
 
@@ -33,8 +34,10 @@ private:
 	int mNumBundles;
 	int mBundlesVerified;
 	int mBundlesFinished;
+	QMap<QString,QString> mSymLinkLater;
 
 	void startVerifying();
+	void processSymLinks();
 
 signals:
 	void error(QString);
@@ -43,11 +46,11 @@ signals:
 	void stateChange(QString state);
 
 private slots:
-    void bundleDownloadMe();
-    void bundleDownloadProgress(qint64);
-    void bundleVerifyDone();
-    void bundleFinished();
-    void bundleError(QString error);
+	void bundleDownloadMe();
+	void bundleDownloadProgress(qint64);
+	void bundleVerifyDone();
+	void bundleFinished();
+	void bundleError(QString error);
 	
 public slots:
     void parseManifest();

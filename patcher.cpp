@@ -9,6 +9,11 @@
 #include <QNetworkReply>
 #include <QMessageBox>
 #include <QApplication>
+#if !defined(_WIN32)
+#  include <unistd.h>
+#  include <cstring>
+#  include <cerrno>
+#endif
 
 bool error_occurred = false;
 
@@ -124,20 +129,145 @@ void Patcher::bundleVerifyDone()
 	}
 }
 
-void Patcher::bundleFinished()
+void Patcher::bundleError(QString error_string)
 {
+	emit stateChange("Error occurred");
+	emit error(error_string);
+}
+
+void Patcher::bundleFinished()
+{/*
+	for(QMap<QString,QString>::const_iterator symlink = mCopyLater.constBegin(); symlink != mCopyLater.constEnd(); ++symlink)
+	{
+		QFile from_file(symlink.key());
+		from_file.copy(symlink.value());
+	}
+
+	int res = symlink(path1.join("/").toStdString().c_str(), (mInstallPath + "/" + to).toStdString().c_str());
+if(res != 0)
+{
+return false;
+}
+*/
+
+	Bundle *bundle = dynamic_cast<Bundle *>(sender());
+	if(bundle)
+	{
+		for(QMap<QString,QString>::const_iterator link = bundle->symLinks().constBegin(); link != bundle->symLinks().constEnd(); ++link)
+		{
+			mSymLinkLater.insert(link.key(), link.value());
+		}
+	}
+
 	mBundlesFinished++;
 	if(mBundlesFinished == mNumBundles)
 	{
+		processSymLinks();
+
 		emit stateChange("Done");
 		emit done();
 	}
 }
 
-void Patcher::bundleError(QString error_string)
+void Patcher::processSymLinks()
 {
-	emit stateChange("Error occurred");
-	emit error(error_string);
+	bool something_changed;
+
+	while(mSymLinkLater.size() > 0)
+	{
+		something_changed = false;
+		for(QMap<QString,QString>::const_iterator slink = mSymLinkLater.constBegin(); slink != mSymLinkLater.constEnd(); ++slink)
+		{
+			QFile source_file(slink.value());
+			if(source_file.exists())
+			{
+				QFile target_file(slink.key());
+				if(target_file.exists())
+					target_file.remove();
+
+#ifdef _WIN32
+				if(!from_file.copy(symlink.key()))
+				{
+					emit error(tr("Error copying duplicate file \"%1\" to \"%2\".\n%3").arg(symlink.value()).arg(symlink.value()).arg(from_file.errorString()));
+					return;
+				}
+#else
+				// For proper symlinks, we need to find the relative path.
+				QStringList target_path = slink.key().split(QRegExp("[\\\\/]"));
+				QStringList source_path = slink.value().split(QRegExp("[\\\\/]"));
+				int i;
+				for(i = 0; i < target_path.count() - 1; i++)
+				{
+					if(source_path[i] == target_path[i])
+					{
+						source_path[i] = "";
+						target_path[i] = "";
+					}
+					else
+						break;
+				}
+				for(; i < target_path.count() - 1; i++)
+				{
+					source_path.push_front("..");
+				}
+
+				for(int i = source_path.count() - 1; i >= 0; i--)
+				{
+					if(source_path[i].isEmpty())
+						source_path.removeAt(i);
+				}
+
+				int res = symlink(source_path.join("/").toStdString().c_str(), slink.key().toStdString().c_str());
+				if(res != 0)
+				{
+					int error_code = errno;
+					emit error(tr("Error creating symlink from \"%1\" to \"%2\".\n%3").arg(source_file.fileName()).arg(source_path.join('/')).arg(strerror(error_code)));
+					return;
+				}
+#endif
+
+				mSymLinkLater.remove(slink.key());
+				something_changed = true;
+				break;
+			}
+		}
+
+		if(!something_changed)
+		{
+			emit error(tr("Error copying duplicate file. Source does not exist."));
+			return;
+		}
+	}
+
+		/*
+		// This is the same file, so make a symbolic link, but first
+	// find the relative path.
+	QStringList path1 = from.split(QRegExp("[\\\\/]"));
+	QStringList path2 = to.split(QRegExp("[\\\\/]"));
+	int i;
+	for(i = 0; i < path2.count() - 1; i++)
+	{
+		if(path1[i] == path2[i])
+		{
+			path1[i] = "";
+			path2[i] = "";
+		}
+		else
+			break;
+	}
+	for(; i < path2.count() - 1; i++)
+	{
+		path1.push_front("..");
+	}
+
+	for(int i = path1.count() - 1; i >= 0; i--)
+	{
+		if(path1[i].isEmpty())
+			path1.removeAt(i);
+	}
+
+	int res = symlink(path1.join("/").toStdString().c_str(), (mInstallPath + "/" + to).toStdString().c_str());
+*/
 }
 
 

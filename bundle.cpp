@@ -13,11 +13,6 @@
 #include <QCryptographicHash>
 #include <QNetworkReply>
 #include <zlib.h>
-#if !defined(_WIN32)
-#  include <unistd.h>
-#  include <cstring>
-#  include <cerrno>
-#endif
 
 Bundle::Bundle(QString install_path, Patcher *patcher)
  : QObject(), mInstallPath(install_path), mPatcher(patcher), mNeedsDownloading(false), mBufferSize(10*1024)
@@ -160,16 +155,7 @@ void Bundle::verifyFinished()
 		if(mNeedsDownloading)
 			emit downloadMe();
 		else
-		{
-#ifdef _WIN32
-			for(QMap<QString,QString>::const_iterator symlink = mCopyLater.constBegin(); symlink != mCopyLater.constEnd(); ++symlink)
-			{
-				QFile from_file(symlink.key());
-				from_file.copy(symlink.value());
-			}
-#endif
 			emit finished();
-		}
 	}
 }
 
@@ -314,14 +300,6 @@ void Bundle::downloadFinished()
 
 		reply->deleteLater();
 
-#ifdef _WIN32
-		for(QMap<QString,QString>::const_iterator symlink = mCopyLater.constBegin(); symlink != mCopyLater.constEnd(); ++symlink)
-		{
-			QFile from_file(symlink.key());
-			from_file.copy(symlink.value());
-		}
-#endif
-
 		emit finished();
 	}
 }
@@ -402,41 +380,8 @@ void Bundle::nextFile()
 
 bool Bundle::createSymbolicLink(const QString& from, const QString& to)
 {
-	// This is the same file, so make a symbolic link, but first
-	// find the relative path.
-	QStringList path1 = from.split(QRegExp("[\\\\/]"));
-	QStringList path2 = to.split(QRegExp("[\\\\/]"));
-	int i;
-	for(i = 0; i < path2.count() - 1; i++)
-	{
-		if(path1[i] == path2[i])
-		{
-			path1[i] = "";
-			path2[i] = "";
-		}
-		else
-			break;
-	}
-	for(; i < path2.count() - 1; i++)
-	{
-		path1.push_front("..");
-	}
-
-	for(int i = path1.count() - 1; i >= 0; i--)
-	{
-		if(path1[i].isEmpty())
-			path1.removeAt(i);
-	}
-
-#if defined(_WIN32)
-	mCopyLater[mInstallPath + "/" + to] = path1.join("/");
-#else
-	int res = symlink(path1.join("/").toStdString().c_str(), (mInstallPath + "/" + to).toStdString().c_str());
-	if(res != 0)
-	{
-		return false;
-	}
-#endif
+	// Add to the list, which is retrieved by Patcher later to make the actual links.
+	mSymLinkLater[mInstallPath + "/" + to] = mInstallPath + "/" + from;
 
 	return true;
 }
