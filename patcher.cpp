@@ -136,20 +136,7 @@ void Patcher::bundleError(QString error_string)
 }
 
 void Patcher::bundleFinished()
-{/*
-	for(QMap<QString,QString>::const_iterator symlink = mCopyLater.constBegin(); symlink != mCopyLater.constEnd(); ++symlink)
-	{
-		QFile from_file(symlink.key());
-		from_file.copy(symlink.value());
-	}
-
-	int res = symlink(path1.join("/").toStdString().c_str(), (mInstallPath + "/" + to).toStdString().c_str());
-if(res != 0)
 {
-return false;
-}
-*/
-
 	Bundle *bundle = dynamic_cast<Bundle *>(sender());
 	if(bundle)
 	{
@@ -238,36 +225,6 @@ void Patcher::processSymLinks()
 			return;
 		}
 	}
-
-		/*
-		// This is the same file, so make a symbolic link, but first
-	// find the relative path.
-	QStringList path1 = from.split(QRegExp("[\\\\/]"));
-	QStringList path2 = to.split(QRegExp("[\\\\/]"));
-	int i;
-	for(i = 0; i < path2.count() - 1; i++)
-	{
-		if(path1[i] == path2[i])
-		{
-			path1[i] = "";
-			path2[i] = "";
-		}
-		else
-			break;
-	}
-	for(; i < path2.count() - 1; i++)
-	{
-		path1.push_front("..");
-	}
-
-	for(int i = path1.count() - 1; i >= 0; i--)
-	{
-		if(path1[i].isEmpty())
-			path1.removeAt(i);
-	}
-
-	int res = symlink(path1.join("/").toStdString().c_str(), (mInstallPath + "/" + to).toStdString().c_str());
-*/
 }
 
 
