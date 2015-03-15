@@ -150,8 +150,8 @@ QWidget * ModDatabaseFrame::loadMods(ModDatabaseFrame::mod_type type, QWidget* p
 							mod->scenes["building_planets"] = mod_info["building_planets"];
 						if(keys.contains("game_over"))
 							mod->scenes["game_over"] = mod_info["game_over"];
-						if(keys.contains("global"))
-							mod->scenes["global"] = mod_info["global"];
+						if(keys.contains("global_mod_list"))
+							mod->scenes["global_mod_list"] = mod_info["global_mod_list"];
 						if(keys.contains("guide"))
 							mod->scenes["guide"] = mod_info["guide"];
 						if(keys.contains("gw_game_over"))
