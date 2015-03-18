@@ -162,6 +162,7 @@ void Bundle::verifyFinished()
 void Bundle::downloadAndExtract(QNetworkAccessManager* network_access_manager, QString download_url)
 {
 	QNetworkRequest request(QUrl(download_url.arg(mChecksum)));
+	request.setRawHeader("X-Clacks-Overhead", "GNU Terry Pratchett");
 	request.setRawHeader("User-Agent", QString("PAAlternativeLauncher/%1").arg(VERSION).toUtf8());
 
 	mBytesDownloaded = 0;

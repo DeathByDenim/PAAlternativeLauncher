@@ -149,6 +149,7 @@ PAAlternativeLauncher::PAAlternativeLauncher()
 
 		QNetworkRequest request(QUrl("https://uberent.com/Launcher/ListStreams?Platform=" + mPlatform));
 		request.setRawHeader("X-Authorization", mSessionTicket.toUtf8());
+		request.setRawHeader("X-Clacks-Overhead", "GNU Terry Pratchett");
 		request.setRawHeader("User-Agent", QString("PAAlternativeLauncher/%1").arg(VERSION).toUtf8());
 		QNetworkReply *reply = mNetworkAccessManager->get(request);
 		connect(reply, SIGNAL(finished()), SLOT(streamsFinished()));
@@ -345,6 +346,7 @@ void PAAlternativeLauncher::loginPushButtonClicked(bool)
 	QNetworkRequest request(QUrl("https://uberent.com/GC/Authenticate"));
 	QString data = QString("{\"TitleId\": 4,\"AuthMethod\": \"UberCredentials\",\"UberName\": \"%1\",\"Password\": \"%2\"}").arg(mUserNameLineEdit->text()).arg(mPasswordLineEdit->text());
 	request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json;charset=utf-8");
+	request.setRawHeader("X-Clacks-Overhead", "GNU Terry Pratchett");
 	request.setRawHeader("User-Agent", QString("PAAlternativeLauncher/%1").arg(VERSION).toUtf8());
 
 	QNetworkReply *reply = mNetworkAccessManager->post(request, data.toUtf8());
@@ -433,7 +435,8 @@ void PAAlternativeLauncher::downloadPushButtonClicked(bool)
 		prepareZLib();
 		QUrl manifesturl(downloadurl + '/' + titlefolder + '/' + manifestname + authsuffix);
 		QNetworkRequest request(manifesturl);
-		request.setRawHeader("User-Agent", "test");
+		request.setRawHeader("X-Clacks-Overhead", "GNU Terry Pratchett");
+		request.setRawHeader("User-Agent", QString("PAAlternativeLauncher/%1").arg(VERSION).toUtf8());
 		QNetworkReply *reply = mNetworkAccessManager->get(request);
 		connect(reply, SIGNAL(readyRead()), SLOT(manifestReadyRead()));
 		connect(reply, SIGNAL(downloadProgress(qint64,qint64)), SLOT(manifestDownloadProgress(qint64,qint64)));
@@ -643,6 +646,7 @@ void PAAlternativeLauncher::authenticateFinished()
 
 				QNetworkRequest request(QUrl("https://uberent.com/Launcher/ListStreams?Platform=" + mPlatform));
 				request.setRawHeader("X-Authorization", mSessionTicket.toUtf8());
+				request.setRawHeader("X-Clacks-Overhead", "GNU Terry Pratchett");
 				request.setRawHeader("User-Agent", QString("PAAlternativeLauncher/%1").arg(VERSION).toUtf8());
 				QNetworkReply *reply = mNetworkAccessManager->get(request);
 				connect(reply, SIGNAL(finished()), SLOT(streamsFinished()));
@@ -689,6 +693,7 @@ void PAAlternativeLauncher::streamsFinished()
 				// Get the news
 				QNetworkRequest request(QUrl("https://uberent.com/Launcher/StreamNews?StreamName=" + stream_name + "&ticket=" + mSessionTicket));
 				request.setRawHeader("X-Authorization", mSessionTicket.toUtf8());
+				request.setRawHeader("X-Clacks-Overhead", "GNU Terry Pratchett");
 				request.setRawHeader("User-Agent", QString("PAAlternativeLauncher/%1").arg(VERSION).toUtf8());
 				request.setAttribute(QNetworkRequest::User, stream_name);
 				QNetworkReply *stream_news_reply = mNetworkAccessManager->get(request);
