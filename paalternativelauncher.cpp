@@ -32,6 +32,7 @@
 #endif
 #include <QFile>
 #include <zlib.h>
+#include <QDebug>
 #include "information.h"
 #include "version.h"
 #include "patcher.h"
@@ -82,23 +83,80 @@ PAAlternativeLauncher::PAAlternativeLauncher()
 	QWidget *centre_widget = new QWidget(main_widget);
 	QHBoxLayout *centre_layout = new QHBoxLayout(centre_widget);
 
-	QLabel *commander_label = new QLabel(centre_widget);
-	commander_label->setPixmap(QPixmap(":img/img_imperial_invictus.png").scaled(10, 400, Qt::KeepAspectRatioByExpanding));
-	centre_layout->addWidget(commander_label);
+	QWidget *commander_widget = new QWidget(centre_widget);
+	QVBoxLayout *commander_layout = new QVBoxLayout(commander_widget);
+	QLabel *commander_label = new QLabel(commander_widget);
+	commander_label->setPixmap(QPixmap(":img/img_imperial_invictus.png"));
+	commander_layout->addWidget(commander_label);
 
-	mLoginWidget = createLoginWidget(centre_widget);
-	mDownloadWidget = createDownloadWidget(centre_widget);
+	centre_layout->addWidget(commander_widget);
+
+	QWidget *middle_horizontal_widget = new QWidget(centre_widget);
+	QVBoxLayout *middle_horizontal_layout = new QVBoxLayout(middle_horizontal_widget);
+
+	QWidget *stream_widget = new QWidget(middle_horizontal_widget);
+	QHBoxLayout *stream_layout = new QHBoxLayout(stream_widget);
+	QLabel *streams_label = new QLabel(tr("Stream"), stream_widget);
+	QPalette palettewhite = main_widget->palette();
+	palettewhite.setColor(QPalette::WindowText, Qt::white);
+	streams_label->setPalette(palettewhite);
+	stream_layout->addWidget(streams_label);
+	mStreamsComboBox = new QComboBox(stream_widget);
+	stream_layout->addWidget(mStreamsComboBox);
+	connect(mStreamsComboBox, SIGNAL(currentIndexChanged(int)), SLOT(streamsComboBoxCurrentIndexChanged(int)));
+	mUpdateAvailableLabel = new QLabel("", stream_widget);
+	mUpdateAvailableLabel->setStyleSheet("QLabel {font-weight: bold; color: white}");
+	mUpdateAvailableLabel->setPalette(palettewhite);
+	stream_layout->addWidget(mUpdateAvailableLabel);
+	stream_layout->addStretch();
+	middle_horizontal_layout->addWidget(stream_widget);
+
+	mLoginWidget = createLoginWidget(middle_horizontal_widget);
+	mDownloadWidget = createDownloadWidget(middle_horizontal_widget);
 	mDownloadWidget->setVisible(false);
-	mWaitWidget = createWaitWidget(centre_widget);
+	mWaitWidget = createWaitWidget(middle_horizontal_widget);
 	mWaitWidget->setVisible(false);
-	centre_layout->addWidget(mLoginWidget);
-	centre_layout->addWidget(mDownloadWidget);
-	centre_layout->addWidget(mWaitWidget);
+	middle_horizontal_layout->addWidget(mLoginWidget);
+	middle_horizontal_layout->addWidget(mDownloadWidget);
+	middle_horizontal_layout->addWidget(mWaitWidget);
+
+	QWidget *install_path_widget = new QWidget(middle_horizontal_widget);
+	QHBoxLayout *install_path_layout = new QHBoxLayout(install_path_widget);
+
+	mInstallPathLineEdit = new QLineEdit(install_path_widget);
+	mInstallPathLineEdit->setPlaceholderText(tr("Enter the PA install directory here."));
+	install_path_layout->addWidget(mInstallPathLineEdit);
+
+	QPushButton *install_path_push_button = new QPushButton(style()->standardIcon(QStyle::SP_DirOpenIcon), "", install_path_widget);
+	install_path_push_button->setFlat(true);
+	connect(install_path_push_button, SIGNAL(clicked(bool)), SLOT(installPathButtonClicked(bool)));
+	install_path_layout->addWidget(install_path_push_button);
+	middle_horizontal_layout->addWidget(install_path_widget);
+
+	centre_layout->addWidget(middle_horizontal_widget);
 
 	mModDatabaseFrame = new ModDatabaseFrame(centre_widget);
 	centre_layout->addWidget(mModDatabaseFrame);
 
 	main_layout->addWidget(centre_widget);
+
+	QDialogButtonBox *button_box = new QDialogButtonBox(main_widget);
+	mLaunchButton = new QPushButton(tr("&Launch PA"), button_box);
+	mLaunchButton->setEnabled(false);
+	connect(mLaunchButton, SIGNAL(clicked(bool)), SLOT(launchPushButtonClicked(bool)));
+	button_box->addButton(mLaunchButton, QDialogButtonBox::AcceptRole);
+	QPushButton *launch_offline_button = new QPushButton(tr("Launch offline"), button_box);
+	connect(launch_offline_button, SIGNAL(clicked(bool)), SLOT(launchOfflinePushButtonClicked(bool)));
+	button_box->addButton(launch_offline_button, QDialogButtonBox::AcceptRole);
+	QPushButton *advanced_button = new QPushButton(tr("&Advanced"), button_box);
+	connect(advanced_button, SIGNAL(clicked(bool)), SLOT(advancedPushButtonClicked(bool)));
+	button_box->addButton(advanced_button, QDialogButtonBox::NoRole);
+	mDownloadButton = new QPushButton(tr("&Download and install"), button_box);
+	mDownloadButton->setEnabled(false);
+	connect(mDownloadButton, SIGNAL(clicked(bool)), SLOT(downloadPushButtonClicked(bool)));
+	button_box->addButton(mDownloadButton, QDialogButtonBox::NoRole);
+
+	main_layout->addWidget(button_box);
 
 	mPatchLabel = new QLabel(main_widget);
 	mPatchLabel->setStyleSheet("QLabel {color: white; font-weight: bold}");
@@ -141,6 +199,17 @@ PAAlternativeLauncher::PAAlternativeLauncher()
 
 	QSettings settings;
 	restoreGeometry(settings.value("mainwindow/geometry").toByteArray());
+
+	QStringList groups = settings.childGroups();
+	qDebug() << groups;
+	for(QStringList::const_iterator stream = groups.constBegin(); stream != groups.constEnd(); ++stream)
+	{
+		if(*stream != "login" && *stream != "mainwindow")
+		{
+			mStreamsComboBox->addItem(*stream);
+		}
+	}
+	mStreamsComboBox->setCurrentText("stable");
 
 	mSessionTicket = settings.value("login/sessionticket").toString();
 	if(!mSessionTicket.isEmpty())
@@ -212,10 +281,6 @@ QWidget* PAAlternativeLauncher::createLoginWidget(QWidget *parent)
 	main_layout->addRow(login_button);
 	connect(login_button, SIGNAL(clicked(bool)), SLOT(loginPushButtonClicked(bool)));
 
-	QPushButton *launch_offline_button = new QPushButton(tr("Launch offline (no password needed)"), main_widget);
-	main_layout->addRow(launch_offline_button);
-	connect(launch_offline_button, SIGNAL(clicked(bool)), SLOT(launchOfflinePushButtonClicked(bool)));
-
 	QSettings settings;
 	mUserNameLineEdit->setText(settings.value("login/username").toString());
 
@@ -231,48 +296,8 @@ QWidget* PAAlternativeLauncher::createDownloadWidget(QWidget* parent)
 	QVBoxLayout *main_layout = new QVBoxLayout(main_widget);
 	main_widget->setLayout(main_layout);
 
-	QWidget *stream_widget = new QWidget(main_widget);
-	QHBoxLayout *stream_layout = new QHBoxLayout(stream_widget);
-	QLabel *streams_label = new QLabel(tr("Stream"), stream_widget);
-	streams_label->setPalette(palette);
-	stream_layout->addWidget(streams_label);
-	mStreamsComboBox = new QComboBox(stream_widget);
-	stream_layout->addWidget(mStreamsComboBox);
-	connect(mStreamsComboBox, SIGNAL(currentIndexChanged(int)), SLOT(streamsComboBoxCurrentIndexChanged(int)));
-	stream_layout->addStretch();
-	mUpdateAvailableLabel = new QLabel("", stream_widget);
-	mUpdateAvailableLabel->setStyleSheet("QLabel {font-weight: bold; color: white}");
-	mUpdateAvailableLabel->setPalette(palette);
-	stream_layout->addWidget(mUpdateAvailableLabel);
-	main_layout->addWidget(stream_widget);
-
 	mPatchTextBrowser = new QTextBrowser(main_widget);
 	main_layout->addWidget(mPatchTextBrowser);
-
-	QWidget *install_path_widget = new QWidget(main_widget);
-	QHBoxLayout *install_path_layout = new QHBoxLayout(install_path_widget);
-
-	mInstallPathLineEdit = new QLineEdit(install_path_widget);
-	install_path_layout->addWidget(mInstallPathLineEdit);
-
-	QPushButton *install_path_push_button = new QPushButton(style()->standardIcon(QStyle::SP_DirOpenIcon), "", install_path_widget);
-	install_path_push_button->setFlat(true);
-	connect(install_path_push_button, SIGNAL(clicked(bool)), SLOT(installPathButtonClicked(bool)));
-	install_path_layout->addWidget(install_path_push_button);
-	main_layout->addWidget(install_path_widget);
-
-	QDialogButtonBox *button_box = new QDialogButtonBox(main_widget);
-	QPushButton *launch_button = new QPushButton(tr("&Launch PA"), button_box);
-	connect(launch_button, SIGNAL(clicked(bool)), SLOT(launchPushButtonClicked(bool)));
-	button_box->addButton(launch_button, QDialogButtonBox::AcceptRole);
-	QPushButton *advanced_button = new QPushButton(tr("&Advanced"), button_box);
-	connect(advanced_button, SIGNAL(clicked(bool)), SLOT(advancedPushButtonClicked(bool)));
-	button_box->addButton(advanced_button, QDialogButtonBox::NoRole);
-	mDownloadButton = new QPushButton(tr("&Download and install"), button_box);
-	connect(mDownloadButton, SIGNAL(clicked(bool)), SLOT(downloadPushButtonClicked(bool)));
-	button_box->addButton(mDownloadButton, QDialogButtonBox::NoRole);
-
-	main_layout->addWidget(button_box);
 
 	return main_widget;
 }
@@ -308,10 +333,6 @@ QWidget* PAAlternativeLauncher::createWaitWidget(QWidget* parent)
 	main_layout->addWidget(loading_label);
 
 	main_layout->addStretch();
-
-	QPushButton *launch_offline_button = new QPushButton(tr("Launch offline"), main_widget);
-	main_layout->addWidget(launch_offline_button);
-	connect(launch_offline_button, SIGNAL(clicked(bool)), SLOT(launchOfflinePushButtonClicked(bool)));
 
 	return main_widget;
 }
@@ -377,12 +398,19 @@ void PAAlternativeLauncher::streamsComboBoxCurrentIndexChanged(int)
 	QString uber_version = mStreamsComboBox->currentData().toMap()["BuildId"].toString();
 	QString current_version = currentInstalledVersion();
 
-	if(current_version.isEmpty())
-		mUpdateAvailableLabel->setText(tr("Build %2 available").arg(uber_version));
+	if(uber_version.isEmpty())
+	{
+		mUpdateAvailableLabel->setVisible(false);
+	}
 	else
-		mUpdateAvailableLabel->setText(tr("Update from %1 to %2 available").arg(current_version).arg(uber_version));
+	{
+		if(current_version.isEmpty())
+			mUpdateAvailableLabel->setText(tr("Build %2 available").arg(uber_version));
+		else
+			mUpdateAvailableLabel->setText(tr("Update from %1 to %2 available").arg(current_version).arg(uber_version));
 
-	mUpdateAvailableLabel->setVisible(uber_version != current_version);
+		mUpdateAvailableLabel->setVisible(uber_version != current_version);
+	}
 
 	mModDatabaseFrame->setVisible(!mExtraParameters.contains("--nomods"));
 }
@@ -472,129 +500,12 @@ void PAAlternativeLauncher::patcherProgress(int percentage)
 
 void PAAlternativeLauncher::launchOfflinePushButtonClicked(bool)
 {
-	// Update manually, because no streams are selected yet.
-	QSettings settings;
-	QString install_path = settings.value("stable/installpath").toString();
-	mExtraParameters = settings.value("stable/extraparameters").toString();
-	mUseOptimus = (AdvancedDialog::optimus_t)settings.value("stable/useoptirun").toInt();
-
-	if(install_path.isEmpty())
-	{
-#ifdef _WIN32
-		install_path = mDefaultInstallPath + "\\stable";
-#else
-		info.critical(tr("Launch offline"), tr("Install path is empty. It looks like this launcher never downloaded PA.\nPlease log in and download PA."));
-		return;
-#endif
-	}
-
-	
-	QString command;
-	QStringList parameters;
-
-	command =
-		install_path +
-#ifdef linux
-		"/PA"
-#elif _WIN32
-		"\\bin_x64\\PA.exe"
-// or:	"\\bin_x86\\PA.exe"
-#elif __APPLE__
-	"/PA.app/Contents/MacOS/PA"
-#endif
-	;
-
-#ifdef linux
-	switch(mUseOptimus)
-	{
-		case AdvancedDialog::optirun:
-			parameters << command;
-			command = "optirun";
-			break;
-		case AdvancedDialog::primusrun:
-			parameters << command;
-			command = "primusrun";
-			break;
-		default:
-			break;
-	}
-#endif
-
-	parameters.append(mExtraParameters.split(" "));
-
-	if(QProcess::startDetached(command, parameters))
-	{
-		close();
-	}
-	else
-		info.critical(tr("Failed to launch"), tr("Error while starting PA with the following command:") + "\n" + command);
+	launchPA(true);
 }
 
 void PAAlternativeLauncher::launchPushButtonClicked(bool)
 {
-	if(mInstallPathLineEdit->text().isEmpty())
-	{
-		info.critical(tr("Launch"), tr("Install path is empty."));
-		mInstallPathLineEdit->setFocus();
-		return;
-	}
-
-	QString command;
-	QStringList parameters;
-
-	QString uber_version = mStreamsComboBox->currentData().toMap()["BuildId"].toString();
-	QString current_version = currentInstalledVersion();
-
-	bool use_ticket = true;
-	if(uber_version != current_version)
-	{
-		if(QMessageBox::warning(this, tr("Update required"), tr("There is an update available for this stream.\nPlanetary Annihilation will not work on-line.\n\nContinue in off-line mode?"), QMessageBox::Yes | QMessageBox::No) == QMessageBox::No)
-			return;
-
-		use_ticket = false;
-	}
-
-	command =
-		mInstallPathLineEdit->text() +
-#ifdef linux
-		"/PA"
-#elif _WIN32
-		"\\bin_x64\\PA.exe"
-// or:	"\\bin_x86\\PA.exe"
-#elif __APPLE__
-		"/PA.app/Contents/MacOS/PA"
-#endif
-	;
-
-#ifdef linux
-	switch(mUseOptimus)
-	{
-		case AdvancedDialog::optirun:
-			parameters << command;
-			command = "optirun";
-			break;
-		case AdvancedDialog::primusrun:
-			parameters << command;
-			command = "primusrun";
-			break;
-		default:
-			break;
-	}
-#endif
-
-	if(use_ticket)
-	{
-		parameters.append("--ticket");
-		parameters.append(mSessionTicket);
-	}
-	parameters.append(mExtraParameters.split(" "));
-
-	if(QProcess::startDetached(command, parameters))
-	{
-		close();
-	}
-	else
-		info.critical(tr("Failed to launch"), tr("Error while starting PA with the following command:") + "\n" + command);
+	launchPA(false);
 }
 
 
@@ -868,6 +779,11 @@ void PAAlternativeLauncher::setState(PAAlternativeLauncher::EState state)
 		else
 			mPasswordLineEdit->setFocus();
 	}
+	else if(state == download_state)
+	{
+		mLaunchButton->setEnabled(true);
+		mDownloadButton->setEnabled(true);
+	}
 }
 
 QString PAAlternativeLauncher::currentInstalledVersion()
@@ -909,6 +825,78 @@ quint64 PAAlternativeLauncher::getFreeDiskspaceInMB(QString directory)
 #endif
 
 	return ULONG_MAX;
+}
+
+void PAAlternativeLauncher::launchPA(bool offline)
+{
+	if(mInstallPathLineEdit->text().isEmpty())
+	{
+		info.critical(tr("Launch"), tr("Install path is empty."));
+		mInstallPathLineEdit->setFocus();
+		return;
+	}
+
+	QString command;
+	QStringList parameters;
+	bool use_ticket = false;
+
+	if(!offline)
+	{
+		QString uber_version = mStreamsComboBox->currentData().toMap()["BuildId"].toString();
+		QString current_version = currentInstalledVersion();
+
+		if(uber_version != current_version)
+		{
+			if(QMessageBox::warning(this, tr("Update required"), tr("There is an update available for this stream.\nPlanetary Annihilation will not work on-line.\n\nContinue in off-line mode?"), QMessageBox::Yes | QMessageBox::No) == QMessageBox::No)
+				return;
+
+			use_ticket = false;
+		}
+		else
+			use_ticket = true;
+	}
+
+	command =
+		mInstallPathLineEdit->text() +
+#ifdef linux
+		"/PA"
+#elif _WIN32
+		"\\bin_x64\\PA.exe"
+// or:	"\\bin_x86\\PA.exe"
+#elif __APPLE__
+		"/PA.app/Contents/MacOS/PA"
+#endif
+	;
+
+#ifdef linux
+	switch(mUseOptimus)
+	{
+		case AdvancedDialog::optirun:
+			parameters << command;
+			command = "optirun";
+			break;
+		case AdvancedDialog::primusrun:
+			parameters << command;
+			command = "primusrun";
+			break;
+		default:
+			break;
+	}
+#endif
+
+	if(use_ticket)
+	{
+		parameters.append("--ticket");
+		parameters.append(mSessionTicket);
+	}
+	parameters.append(mExtraParameters.split(" "));
+
+	if(QProcess::startDetached(command, parameters))
+	{
+		close();
+	}
+	else
+		info.critical(tr("Failed to launch"), tr("Error while starting PA with the following command:") + "\n" + command);
 }
 
 #include "paalternativelauncher.moc"

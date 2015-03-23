@@ -59,6 +59,7 @@ private:
 	AdvancedDialog::optimus_t mUseOptimus;
 	QThread mPatcherThread;
 	ModDatabaseFrame *mModDatabaseFrame;
+    QPushButton* mLaunchButton;
 
 	void prepareZLib();
 	QWidget * createLoginWidget(QWidget * parent);
@@ -67,6 +68,7 @@ private:
 	void setState(EState state);
 	QString currentInstalledVersion();
 	quint64 getFreeDiskspaceInMB(QString directory);
+	void launchPA(bool offline);
 
 private slots:
     void loginPushButtonClicked(bool);
