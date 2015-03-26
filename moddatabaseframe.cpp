@@ -134,123 +134,120 @@ QWidget * ModDatabaseFrame::loadMods(ModDatabaseFrame::mod_type type, QWidget* p
 				for(QJsonArray::const_iterator dep = dep_array.constBegin(); dep != dep_array.constEnd(); ++dep)
 					mod->dependencies.push_back((*dep).toString());
 
-				if(type == client_mod)
+				if(mod_info.keys().contains("scenes"))
 				{
-					if(mod_info.keys().contains("scenes"))
-					{
-						mod->scenes = mod_info["scenes"].toObject();
-					}
-					else
-					{
-						QStringList keys = mod_info.keys();
+					mod->scenes = mod_info["scenes"].toObject();
+				}
+				else
+				{
+					QStringList keys = mod_info.keys();
 
-						if(keys.contains("armory"))
-							mod->scenes["armory"] = mod_info["armory"];
-						if(keys.contains("building_planets"))
-							mod->scenes["building_planets"] = mod_info["building_planets"];
-						if(keys.contains("game_over"))
-							mod->scenes["game_over"] = mod_info["game_over"];
-						if(keys.contains("global_mod_list"))
-							mod->scenes["global_mod_list"] = mod_info["global_mod_list"];
-						if(keys.contains("guide"))
-							mod->scenes["guide"] = mod_info["guide"];
-						if(keys.contains("gw_game_over"))
-							mod->scenes["gw_game_over"] = mod_info["gw_game_over"];
-						if(keys.contains("gw_lobby"))
-							mod->scenes["gw_lobby"] = mod_info["gw_lobby"];
-						if(keys.contains("gw_play"))
-							mod->scenes["gw_play"] = mod_info["gw_play"];
-						if(keys.contains("gw_start"))
-							mod->scenes["gw_start"] = mod_info["gw_start"];
-						if(keys.contains("gw_war_over"))
-							mod->scenes["gw_war_over"] = mod_info["gw_war_over"];
-						if(keys.contains("icon_atlas"))
-							mod->scenes["icon_atlas"] = mod_info["icon_atlas"];
-						if(keys.contains("leaderboard"))
-							mod->scenes["leaderboard"] = mod_info["leaderboard"];
-						if(keys.contains("live_game"))
-							mod->scenes["live_game"] = mod_info["live_game"];
-						if(keys.contains("live_game_action_bar"))
-							mod->scenes["live_game_action_bar"] = mod_info["live_game_action_bar"];
-						if(keys.contains("live_game_build_bar"))
-							mod->scenes["live_game_build_bar"] = mod_info["live_game_build_bar"];
-						if(keys.contains("live_game_build_hover"))
-							mod->scenes["live_game_build_hover"] = mod_info["live_game_build_hover"];
-						if(keys.contains("live_game_celestial_control"))
-							mod->scenes["live_game_celestial_control"] = mod_info["live_game_celestial_control"];
-						if(keys.contains("live_game_chat"))
-							mod->scenes["live_game_chat"] = mod_info["live_game_chat"];
-						if(keys.contains("live_game_control_group_bar"))
-							mod->scenes["live_game_control_group_bar"] = mod_info["live_game_control_group_bar"];
-						if(keys.contains("live_game_devmode"))
-							mod->scenes["live_game_devmode"] = mod_info["live_game_devmode"];
-						if(keys.contains("live_game_econ"))
-							mod->scenes["live_game_econ"] = mod_info["live_game_econ"];
-						if(keys.contains("live_game_footer"))
-							mod->scenes["live_game_footer"] = mod_info["live_game_footer"];
-						if(keys.contains("live_game_header"))
-							mod->scenes["live_game_header"] = mod_info["live_game_header"];
-						if(keys.contains("live_game_hover"))
-							mod->scenes["live_game_hover"] = mod_info["live_game_hover"];
-						if(keys.contains("live_game_menu"))
-							mod->scenes["live_game_menu"] = mod_info["live_game_menu"];
-						if(keys.contains("live_game_message"))
-							mod->scenes["live_game_message"] = mod_info["live_game_message"];
-						if(keys.contains("live_game_options_bar"))
-							mod->scenes["live_game_options_bar"] = mod_info["live_game_options_bar"];
-						if(keys.contains("live_game_paused_popup"))
-							mod->scenes["live_game_paused_popup"] = mod_info["live_game_paused_popup"];
-						if(keys.contains("live_game_pip"))
-							mod->scenes["live_game_pip"] = mod_info["live_game_pip"];
-						if(keys.contains("live_game_planets"))
-							mod->scenes["live_game_planets"] = mod_info["live_game_planets"];
-						if(keys.contains("live_game_players"))
-							mod->scenes["live_game_players"] = mod_info["live_game_players"];
-						if(keys.contains("live_game_popup"))
-							mod->scenes["live_game_popup"] = mod_info["live_game_popup"];
-						if(keys.contains("live_game_sandbox"))
-							mod->scenes["live_game_sandbox"] = mod_info["live_game_sandbox"];
-						if(keys.contains("live_game_selection"))
-							mod->scenes["live_game_selection"] = mod_info["live_game_selection"];
-						if(keys.contains("live_game_time_bar"))
-							mod->scenes["live_game_time_bar"] = mod_info["live_game_time_bar"];
-						if(keys.contains("live_game_time_bar_alerts"))
-							mod->scenes["live_game_time_bar_alerts"] = mod_info["live_game_time_bar_alerts"];
-						if(keys.contains("live_game_unit_alert"))
-							mod->scenes["live_game_unit_alert"] = mod_info["live_game_unit_alert"];
-						if(keys.contains("load_planet"))
-							mod->scenes["load_planet"] = mod_info["load_planet"];
-						if(keys.contains("main"))
-							mod->scenes["main"] = mod_info["main"];
-						if(keys.contains("matchmaking"))
-							mod->scenes["matchmaking"] = mod_info["matchmaking"];
-						if(keys.contains("new_game"))
-							mod->scenes["new_game"] = mod_info["new_game"];
-						if(keys.contains("new_game_cinematic"))
-							mod->scenes["new_game_cinematic"] = mod_info["new_game_cinematic"];
-						if(keys.contains("new_game_ladder"))
-							mod->scenes["new_game_ladder"] = mod_info["new_game_ladder"];
-						if(keys.contains("replay_browser"))
-							mod->scenes["replay_browser"] = mod_info["replay_browser"];
-						if(keys.contains("replay_loading"))
-							mod->scenes["replay_loading"] = mod_info["replay_loading"];
-						if(keys.contains("server_browser"))
-							mod->scenes["server_browser"] = mod_info["server_browser"];
-						if(keys.contains("settings"))
-							mod->scenes["settings"] = mod_info["settings"];
-						if(keys.contains("social"))
-							mod->scenes["social"] = mod_info["social"];
-						if(keys.contains("special_icon_atlas"))
-							mod->scenes["special_icon_atlas"] = mod_info["special_icon_atlas"];
-						if(keys.contains("start"))
-							mod->scenes["start"] = mod_info["start"];
-						if(keys.contains("system_editor"))
-							mod->scenes["system_editor"] = mod_info["system_editor"];
-						if(keys.contains("transit"))
-							mod->scenes["transit"] = mod_info["transit"];
-						if(keys.contains("uberbar"))
-							mod->scenes["uberbar"] = mod_info["uberbar"];
-					}
+					if(keys.contains("armory"))
+						mod->scenes["armory"] = mod_info["armory"];
+					if(keys.contains("building_planets"))
+						mod->scenes["building_planets"] = mod_info["building_planets"];
+					if(keys.contains("game_over"))
+						mod->scenes["game_over"] = mod_info["game_over"];
+					if(keys.contains("global_mod_list"))
+						mod->scenes["global_mod_list"] = mod_info["global_mod_list"];
+					if(keys.contains("guide"))
+						mod->scenes["guide"] = mod_info["guide"];
+					if(keys.contains("gw_game_over"))
+						mod->scenes["gw_game_over"] = mod_info["gw_game_over"];
+					if(keys.contains("gw_lobby"))
+						mod->scenes["gw_lobby"] = mod_info["gw_lobby"];
+					if(keys.contains("gw_play"))
+						mod->scenes["gw_play"] = mod_info["gw_play"];
+					if(keys.contains("gw_start"))
+						mod->scenes["gw_start"] = mod_info["gw_start"];
+					if(keys.contains("gw_war_over"))
+						mod->scenes["gw_war_over"] = mod_info["gw_war_over"];
+					if(keys.contains("icon_atlas"))
+						mod->scenes["icon_atlas"] = mod_info["icon_atlas"];
+					if(keys.contains("leaderboard"))
+						mod->scenes["leaderboard"] = mod_info["leaderboard"];
+					if(keys.contains("live_game"))
+						mod->scenes["live_game"] = mod_info["live_game"];
+					if(keys.contains("live_game_action_bar"))
+						mod->scenes["live_game_action_bar"] = mod_info["live_game_action_bar"];
+					if(keys.contains("live_game_build_bar"))
+						mod->scenes["live_game_build_bar"] = mod_info["live_game_build_bar"];
+					if(keys.contains("live_game_build_hover"))
+						mod->scenes["live_game_build_hover"] = mod_info["live_game_build_hover"];
+					if(keys.contains("live_game_celestial_control"))
+						mod->scenes["live_game_celestial_control"] = mod_info["live_game_celestial_control"];
+					if(keys.contains("live_game_chat"))
+						mod->scenes["live_game_chat"] = mod_info["live_game_chat"];
+					if(keys.contains("live_game_control_group_bar"))
+						mod->scenes["live_game_control_group_bar"] = mod_info["live_game_control_group_bar"];
+					if(keys.contains("live_game_devmode"))
+						mod->scenes["live_game_devmode"] = mod_info["live_game_devmode"];
+					if(keys.contains("live_game_econ"))
+						mod->scenes["live_game_econ"] = mod_info["live_game_econ"];
+					if(keys.contains("live_game_footer"))
+						mod->scenes["live_game_footer"] = mod_info["live_game_footer"];
+					if(keys.contains("live_game_header"))
+						mod->scenes["live_game_header"] = mod_info["live_game_header"];
+					if(keys.contains("live_game_hover"))
+						mod->scenes["live_game_hover"] = mod_info["live_game_hover"];
+					if(keys.contains("live_game_menu"))
+						mod->scenes["live_game_menu"] = mod_info["live_game_menu"];
+					if(keys.contains("live_game_message"))
+						mod->scenes["live_game_message"] = mod_info["live_game_message"];
+					if(keys.contains("live_game_options_bar"))
+						mod->scenes["live_game_options_bar"] = mod_info["live_game_options_bar"];
+					if(keys.contains("live_game_paused_popup"))
+						mod->scenes["live_game_paused_popup"] = mod_info["live_game_paused_popup"];
+					if(keys.contains("live_game_pip"))
+						mod->scenes["live_game_pip"] = mod_info["live_game_pip"];
+					if(keys.contains("live_game_planets"))
+						mod->scenes["live_game_planets"] = mod_info["live_game_planets"];
+					if(keys.contains("live_game_players"))
+						mod->scenes["live_game_players"] = mod_info["live_game_players"];
+					if(keys.contains("live_game_popup"))
+						mod->scenes["live_game_popup"] = mod_info["live_game_popup"];
+					if(keys.contains("live_game_sandbox"))
+						mod->scenes["live_game_sandbox"] = mod_info["live_game_sandbox"];
+					if(keys.contains("live_game_selection"))
+						mod->scenes["live_game_selection"] = mod_info["live_game_selection"];
+					if(keys.contains("live_game_time_bar"))
+						mod->scenes["live_game_time_bar"] = mod_info["live_game_time_bar"];
+					if(keys.contains("live_game_time_bar_alerts"))
+						mod->scenes["live_game_time_bar_alerts"] = mod_info["live_game_time_bar_alerts"];
+					if(keys.contains("live_game_unit_alert"))
+						mod->scenes["live_game_unit_alert"] = mod_info["live_game_unit_alert"];
+					if(keys.contains("load_planet"))
+						mod->scenes["load_planet"] = mod_info["load_planet"];
+					if(keys.contains("main"))
+						mod->scenes["main"] = mod_info["main"];
+					if(keys.contains("matchmaking"))
+						mod->scenes["matchmaking"] = mod_info["matchmaking"];
+					if(keys.contains("new_game"))
+						mod->scenes["new_game"] = mod_info["new_game"];
+					if(keys.contains("new_game_cinematic"))
+						mod->scenes["new_game_cinematic"] = mod_info["new_game_cinematic"];
+					if(keys.contains("new_game_ladder"))
+						mod->scenes["new_game_ladder"] = mod_info["new_game_ladder"];
+					if(keys.contains("replay_browser"))
+						mod->scenes["replay_browser"] = mod_info["replay_browser"];
+					if(keys.contains("replay_loading"))
+						mod->scenes["replay_loading"] = mod_info["replay_loading"];
+					if(keys.contains("server_browser"))
+						mod->scenes["server_browser"] = mod_info["server_browser"];
+					if(keys.contains("settings"))
+						mod->scenes["settings"] = mod_info["settings"];
+					if(keys.contains("social"))
+						mod->scenes["social"] = mod_info["social"];
+					if(keys.contains("special_icon_atlas"))
+						mod->scenes["special_icon_atlas"] = mod_info["special_icon_atlas"];
+					if(keys.contains("start"))
+						mod->scenes["start"] = mod_info["start"];
+					if(keys.contains("system_editor"))
+						mod->scenes["system_editor"] = mod_info["system_editor"];
+					if(keys.contains("transit"))
+						mod->scenes["transit"] = mod_info["transit"];
+					if(keys.contains("uberbar"))
+						mod->scenes["uberbar"] = mod_info["uberbar"];
 				}
 
 				mod_list.append(mod);
@@ -368,7 +365,7 @@ QWidget * ModDatabaseFrame::loadMods(ModDatabaseFrame::mod_type type, QWidget* p
 			QCheckBox *mod_check_box = new QCheckBox((*mod)->name, main_widget);
 			mod_check_box->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
 			mod_check_box->setChecked((*mod)->enabled);
-			if((*mod)->identifier == "com.pa.deathbydenim.dpamm" || (*mod)->identifier == "com.pa.raevn.pamm")
+			if((*mod)->identifier == "com.pa.deathbydenim.dpamm" || (*mod)->identifier == "com.pa.raevn.pamm" || (*mod)->identifier == "com.pa.pamm.server")
 				mod_check_box->setEnabled(false);
 
 			QPalette mod_check_box_palette = mod_check_box->palette();
@@ -410,6 +407,27 @@ void ModDatabaseFrame::modCheckBoxStateChanged(int state)
 				else
 					disableMod(*mod);
 
+				bool server_mods_active = false;
+				for(QList<mod_t *>::iterator mod2 = mModList.begin(); mod2 != mModList.end(); ++mod2)
+				{
+					if((*mod2)->enabled && (*mod2)->type == server_mod && (*mod2)->identifier != "com.pa.pamm.server")
+					{
+						server_mods_active = true;
+						break;
+					}
+				}
+
+				for(QList<mod_t *>::iterator mod2 = mModList.begin(); mod2 != mModList.end(); ++mod2)
+				{
+					if((*mod2)->identifier == "com.pa.pamm.server")
+					{
+						if(server_mods_active)
+							enableMod(*mod2);
+						else
+							disableMod(*mod2);
+					}
+				}
+
 				updateModFiles((*mod)->mods_json_file_name, (*mod)->type);
 				mIgnoreStateChange = false;
 				break;
@@ -448,31 +466,34 @@ void ModDatabaseFrame::updateModFiles(QString mod_json_file_name, mod_type type)
 	else
 		info.critical(tr("Mod file update"), tr("Failed to write to \"%1\".").arg(mod_json_file_name));
 
+	QMap<QString,QStringList> scene_map;
+	for(QList<mod_t *>::const_iterator mod = mModList.constBegin(); mod != mModList.constEnd(); ++mod)
+	{
+		if(!(*mod)->enabled || (*mod)->type != type)
+			continue;
+
+		for(QJsonObject::const_iterator scene = (*mod)->scenes.constBegin(); scene != (*mod)->scenes.constEnd(); ++scene)
+		{
+			QJsonArray scene_items = scene.value().toArray();
+			for(QJsonArray::const_iterator item = scene_items.constBegin(); item != scene_items.constEnd(); ++item)
+				scene_map[scene.key()] << (*item).toString();
+		}
+	}
+
 	if(type == client_mod)
 	{
 		QFileInfo file_info(mod_json_file_name);
 		QFile ui_mod_list_file(file_info.absolutePath() + "/PAMM/ui/mods/ui_mod_list.js");
 		if(ui_mod_list_file.open(QFile::WriteOnly))
 		{
-			QMap<QString,QStringList> scene_map;
-			for(QList<mod_t *>::const_iterator mod = mModList.constBegin(); mod != mModList.constEnd(); ++mod)
-			{
-				if(!(*mod)->enabled)
-					continue;
-
-				for(QJsonObject::const_iterator scene = (*mod)->scenes.constBegin(); scene != (*mod)->scenes.constEnd(); ++scene)
-				{
-					QJsonArray scene_items = scene.value().toArray();
-					for(QJsonArray::const_iterator item = scene_items.constBegin(); item != scene_items.constEnd(); ++item)
-						scene_map[scene.key()] << (*item).toString();
-				}
-			}
-
 			QTextStream out(&ui_mod_list_file);
 
-			out << "var global_mod_list = [\"" << scene_map["global_mod_list"].join("\",\"") << "\"];\n";
+			out << "var global_mod_list = [";
+			if(scene_map["global_mod_list"].count() > 0)
+				out << "\n\t\"" << scene_map["global_mod_list"].join("\",\n\t\"") << "\"\n";
+			out << "];\n\n";
 
-			out << "var scene_mod_list = {";
+			out << "var scene_mod_list = {\n";
 
 			for(QMap<QString,QStringList>::const_iterator scene = scene_map.constBegin(); scene != scene_map.constEnd(); ++scene)
 			{
@@ -480,12 +501,67 @@ void ModDatabaseFrame::updateModFiles(QString mod_json_file_name, mod_type type)
 					continue;
 
 				if(scene != scene_map.constBegin())
-					out << ',';
+					out << ",\n";
 
-				out << "\"" << scene.key() << "\": [\"" << scene.value().join("\",\"") << "\"]";
+				out << "\t\"" << scene.key() << "\": [\n\t\t\"" << scene.value().join("\",\n\t\t\"") << "\"\n\t]";
 			}
-			out << "};";
+			out << "\n};\n";
 
+		}
+		else
+			info.critical(tr("Mod file update"), tr("Failed to write to \"%1\".").arg(ui_mod_list_file.fileName()));
+	}
+	else if(type == server_mod)
+	{
+		QFileInfo file_info(mod_json_file_name);
+		QFile ui_mod_list_file(file_info.absolutePath() + "/com.pa.pamm.server/ui/mods/ui_mod_list.js");
+		if(ui_mod_list_file.open(QFile::WriteOnly))
+		{
+			QTextStream out(&ui_mod_list_file);
+
+			out << "var global_server_mod_list = [";
+			if(scene_map["global_mod_list"].count() > 0)
+			{
+				out << "\n\t\"" << scene_map["global_mod_list"].join("\",\n\t\"") << "\"\n";
+			}
+			out << "];\n\n";
+
+			out << "var scene_server_mod_list = {\n";
+			for(QMap<QString,QStringList>::const_iterator scene = scene_map.constBegin(); scene != scene_map.constEnd(); ++scene)
+			{
+				if(scene.key() == "global_mod_list")
+					continue;
+
+				if(scene != scene_map.constBegin())
+					out << ",\n";
+
+				out << "\t\"" << scene.key() << "\": [\n\t\t\"" << scene.value().join("\",\n\t\t\"") << "\"\n\t]";
+			}
+			out << "\n};\n\n";
+
+			out << "try {\n";
+			out << "\tloadScript('coui://ui/mods/ui_mod_list_for_server.js');\n\n";
+			out << "\ttry {\n";
+			out << "\t\tglobal_mod_list = _.union( global_mod_list, global_server_mod_list );\n";
+			out << "\t} catch (e) {\n";
+			out << "\t\tconsole.log(e);\n";
+			out << "\t};\n\n";
+			out << "\ttry {\n";
+			out << "\t\t_.forOwn( scene_server_mod_list, function( value, key ) {\n";
+			out << "\t\t\tif ( scene_mod_list[ key ] ) {\n";
+			out << "\t\t\t\tscene_mod_list[ key ] = _.union( scene_mod_list[ key ], value )\n";
+			out << "\t\t\t} else {\n";
+			out << "\t\t\t\tscene_mod_list[ key ] = value\n";
+			out << "\t\t\t}\n";
+			out << "\t\t});\n";
+			out << "\t} catch (e) {\n";
+			out << "\t\tconsole.log(e);\n";
+			out << "\t}\n";
+			out << "} catch (e) {\n";
+			out << "\tconsole.log(e);\n\n";
+			out << "\tvar global_mod_list = global_server_mod_list;\n\n";
+			out << "\tvar scene_mod_list = scene_server_mod_list;\n\n";
+			out << "}\n";
 		}
 		else
 			info.critical(tr("Mod file update"), tr("Failed to write to \"%1\".").arg(ui_mod_list_file.fileName()));
@@ -507,6 +583,7 @@ void ModDatabaseFrame::disableMod(ModDatabaseFrame::mod_t * mod)
 			if(*dep == mod->identifier)
 			{
 				disableMod(*mod2);
+				break;
 			}
 		}
 	}
@@ -527,6 +604,7 @@ void ModDatabaseFrame::enableMod(ModDatabaseFrame::mod_t * mod)
 			if((*mod2)->identifier == *dep)
 			{
 				enableMod(*mod2);
+				break;
 			}
 		}
 	}

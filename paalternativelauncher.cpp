@@ -32,7 +32,6 @@
 #endif
 #include <QFile>
 #include <zlib.h>
-#include <QDebug>
 #include "information.h"
 #include "version.h"
 #include "patcher.h"
@@ -201,7 +200,6 @@ PAAlternativeLauncher::PAAlternativeLauncher()
 	restoreGeometry(settings.value("mainwindow/geometry").toByteArray());
 
 	QStringList groups = settings.childGroups();
-	qDebug() << groups;
 	for(QStringList::const_iterator stream = groups.constBegin(); stream != groups.constEnd(); ++stream)
 	{
 		if(*stream != "login" && *stream != "mainwindow")
