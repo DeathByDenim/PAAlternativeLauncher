@@ -248,36 +248,45 @@ PAAlternativeLauncher::~PAAlternativeLauncher()
 QWidget* PAAlternativeLauncher::createLoginWidget(QWidget *parent)
 {
 	QWidget *main_widget = new QWidget(parent);
-	QPalette palette = main_widget->palette();
-	palette.setColor(QPalette::WindowText, Qt::white);
-	main_widget->setPalette(palette);
-	QFormLayout *main_layout = new QFormLayout(main_widget);
-	main_widget->setLayout(main_layout);
+	QVBoxLayout *main_layout = new QVBoxLayout(main_widget);
 
-	QLabel *login_label = new QLabel(tr("LOGIN"), main_widget);
+	main_layout->addStretch();
+
+	QWidget *form_widget = new QWidget(main_widget);
+	QPalette palette = form_widget->palette();
+	palette.setColor(QPalette::WindowText, Qt::white);
+	form_widget->setPalette(palette);
+	QFormLayout *form_layout = new QFormLayout(form_widget);
+	form_widget->setLayout(form_layout);
+
+	QLabel *login_label = new QLabel(tr("LOGIN"), form_widget);
 	QFont font = login_label->font();
 	font.setBold(true);
 	font.setPointSizeF(3*font.pointSizeF());
 	login_label->setFont(font);
 	login_label->setAlignment(Qt::AlignCenter);
     login_label->setPalette(palette);
-	main_layout->addRow(login_label);
+	form_layout->addRow(login_label);
 
-	mUserNameLineEdit = new QLineEdit(main_widget);
-    QLabel *user_name_label = new QLabel(tr("Uber ID"), main_widget);
+	mUserNameLineEdit = new QLineEdit(form_widget);
+    QLabel *user_name_label = new QLabel(tr("Uber ID"), form_widget);
     user_name_label->setPalette(palette);
-    main_layout->addRow(user_name_label, mUserNameLineEdit);
+    form_layout->addRow(user_name_label, mUserNameLineEdit);
 
-	mPasswordLineEdit = new QLineEdit(main_widget);
+	mPasswordLineEdit = new QLineEdit(form_widget);
 	mPasswordLineEdit->setEchoMode(QLineEdit::Password);
-    QLabel *password_label = new QLabel(tr("Password"), main_widget);
+    QLabel *password_label = new QLabel(tr("Password"), form_widget);
     password_label->setPalette(palette);
 	connect(mPasswordLineEdit, SIGNAL(returnPressed()), SLOT(passwordLineEditReturnPressed()));
-    main_layout->addRow(password_label, mPasswordLineEdit);
+    form_layout->addRow(password_label, mPasswordLineEdit);
 
-	QPushButton *login_button = new QPushButton(tr("Login"), main_widget);
-	main_layout->addRow(login_button);
+	QPushButton *login_button = new QPushButton(tr("Login"), form_widget);
+	form_layout->addRow(login_button);
 	connect(login_button, SIGNAL(clicked(bool)), SLOT(loginPushButtonClicked(bool)));
+
+	main_layout->addWidget(form_widget);
+	
+	main_layout->addStretch();
 
 	QSettings settings;
 	mUserNameLineEdit->setText(settings.value("login/username").toString());
