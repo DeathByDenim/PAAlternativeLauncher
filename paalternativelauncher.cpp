@@ -144,7 +144,7 @@ PAAlternativeLauncher::PAAlternativeLauncher()
 	mLaunchButton->setEnabled(false);
 	connect(mLaunchButton, SIGNAL(clicked(bool)), SLOT(launchPushButtonClicked(bool)));
 	button_box->addButton(mLaunchButton, QDialogButtonBox::AcceptRole);
-	QPushButton *launch_offline_button = new QPushButton(tr("Launch offline"), button_box);
+	QPushButton *launch_offline_button = new QPushButton(tr("Launch &offline"), button_box);
 	connect(launch_offline_button, SIGNAL(clicked(bool)), SLOT(launchOfflinePushButtonClicked(bool)));
 	button_box->addButton(launch_offline_button, QDialogButtonBox::AcceptRole);
 	QPushButton *advanced_button = new QPushButton(tr("&Advanced"), button_box);
