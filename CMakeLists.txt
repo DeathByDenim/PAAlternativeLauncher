@@ -2,8 +2,8 @@ project(paalternativelauncher)
 cmake_minimum_required(VERSION 2.8.11)
 
 set(MAJOR_VERSION "0")
-set(MINOR_VERSION "5")
-set(PATCH_VERSION "3")
+set(MINOR_VERSION "6")
+set(PATCH_VERSION "0")
 
 # Tell CMake to run moc when necessary:
 set(CMAKE_AUTOMOC ON)
