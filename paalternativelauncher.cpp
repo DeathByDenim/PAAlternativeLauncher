@@ -527,6 +527,7 @@ void PAAlternativeLauncher::advancedPushButtonClicked(bool)
 		mUseOptimus = advanceddialog->useOptimus();
 		settings.setValue(mStreamsComboBox->currentText() + "/extraparameters", mExtraParameters);
 		settings.setValue(mStreamsComboBox->currentText() + "/useoptirun", (int)mUseOptimus);
+		mModDatabaseFrame->setVisible(!mExtraParameters.contains("--nomods"));
 	}
 
 	delete advanceddialog;
