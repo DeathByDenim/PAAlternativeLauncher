@@ -1,0 +1,23 @@
+#!/bin/sh
+set -e
+mkdir -p fix_up_deb
+dpkg-deb -x @CPACK_PACKAGE_FILE_NAME@.deb fix_up_deb
+dpkg-deb --control @CPACK_PACKAGE_FILE_NAME@.deb fix_up_deb/DEBIAN
+rm @CPACK_PACKAGE_FILE_NAME@.deb
+chmod 0644 fix_up_deb/DEBIAN/md5sums
+chmod 0644 fix_up_deb/DEBIAN/control
+find -type d -print0 |xargs -0 chmod 755
+
+# Remove the last line, which is a new-line
+sed -i '$ d' fix_up_deb/DEBIAN/control
+
+# Add the description that CPack won't do.
+echo " The launcher allows you to keep Planetary Annihilation up-to-date. You can" >> fix_up_deb/DEBIAN/control
+echo " select between the available streams, such as stable or PTE. Furthermore, it" >> fix_up_deb/DEBIAN/control
+echo " will remember your login data in a secure manner." >> fix_up_deb/DEBIAN/control
+
+# Add the home page, which CPack won't do
+echo "Homepage: https://forums.uberent.com/threads/pa-alternative-launcher-v0-4.64944/" >> fix_up_deb/DEBIAN/control
+
+fakeroot dpkg -b fix_up_deb @CPACK_PACKAGE_FILE_NAME@.deb
+rm -rf fix_up_deb
