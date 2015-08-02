@@ -27,9 +27,9 @@ void Information::setVerbose(bool verbose)
 
 void Information::critical(const QString& title, const QString& text)
 {
-	m_logfile.write("[ERROR] ", 8);
+	m_logfile.write("[ERROR] (", 9);
 	m_logfile.write(title.toUtf8());
-	m_logfile.write(" ", 1);
+	m_logfile.write(") ", 2);
 	m_logfile.write(text.toUtf8());
 	m_logfile.write("\n", 1);
 	m_logfile.flush();
@@ -38,9 +38,9 @@ void Information::critical(const QString& title, const QString& text)
 
 bool Information::warning(const QString& title, const QString& text)
 {
-	m_logfile.write("[WARN]  ", 8);
+	m_logfile.write("[WARN]  (", 9);
 	m_logfile.write(title.toUtf8());
-	m_logfile.write(" ", 1);
+	m_logfile.write(") ", 2);
 	m_logfile.write(text.toUtf8());
 	m_logfile.write("\n", 1);
 	m_logfile.flush();
@@ -52,9 +52,9 @@ void Information::log(const QString& title, const QString& text, bool verbose)
 	if(verbose && !m_verbose)
 		return;
 
-	m_logfile.write("[LOG]   ", 8);
+	m_logfile.write("[LOG]   (", 9);
 	m_logfile.write(title.toUtf8());
-	m_logfile.write(" ", 1);
+	m_logfile.write(") ", 2);
 	m_logfile.write(text.toUtf8());
 	m_logfile.write("\n", 1);
 	m_logfile.flush();

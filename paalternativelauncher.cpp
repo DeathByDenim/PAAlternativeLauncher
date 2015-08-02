@@ -377,6 +377,7 @@ void PAAlternativeLauncher::loginPushButtonClicked(bool)
 	request.setRawHeader("X-Clacks-Overhead", "GNU Terry Pratchett");
 	request.setRawHeader("User-Agent", QString("PAAlternativeLauncher/%1").arg(VERSION).toUtf8());
 
+	info.log("Button", "Attempting to log in", true);
 	QNetworkReply *reply = mNetworkAccessManager->post(request, data.toUtf8());
 	connect(reply, SIGNAL(finished()), SLOT(authenticateFinished()));
 }
@@ -556,8 +557,11 @@ void PAAlternativeLauncher::authenticateFinished()
 	{
 		if(reply->error() == QNetworkReply::NoError)
 		{
+			info.log("Login", "Authentication information received.", true);
 			QJsonDocument authjson = QJsonDocument::fromJson(reply->readAll());
+			info.log("Login", "Authentication information decoded.", true);
 			mSessionTicket = authjson.object()["SessionTicket"].toString();
+			info.log("Login", QString("Session ticket is %1.").arg(mSessionTicket), true);
 			if(!mSessionTicket.isEmpty())
 			{
 				QSettings settings;
@@ -567,6 +571,7 @@ void PAAlternativeLauncher::authenticateFinished()
 				request.setRawHeader("X-Authorization", mSessionTicket.toUtf8());
 				request.setRawHeader("X-Clacks-Overhead", "GNU Terry Pratchett");
 				request.setRawHeader("User-Agent", QString("PAAlternativeLauncher/%1").arg(VERSION).toUtf8());
+				info.log("Login", "Retrieving available streams.", true);
 				QNetworkReply *reply = mNetworkAccessManager->get(request);
 				connect(reply, SIGNAL(finished()), SLOT(streamsFinished()));
 			}
@@ -593,11 +598,14 @@ void PAAlternativeLauncher::streamsFinished()
 	{
 		if(reply->error() == QNetworkReply::NoError)
 		{
+			info.log("Streams", "Streams received.", true);
 			setState(download_state);
 
 			mStreamsComboBox->clear();
+			info.log("Streams", "Decoding data.", true);
 			QJsonDocument authjson = QJsonDocument::fromJson(reply->readAll());
 			QJsonArray streams = authjson.object()["Streams"].toArray();
+			info.log("Streams", "Processing streams.", true);
 			for(QJsonArray::const_iterator stream = streams.constBegin(); stream != streams.constEnd(); ++stream)
 			{
 				QJsonObject object = (*stream).toObject();
@@ -607,8 +615,10 @@ void PAAlternativeLauncher::streamsFinished()
 				QString auth_suffix = object["AuthSuffix"].toString();
 				QString stream_name = object["StreamName"].toString();
 
+				info.log("Streams", QString("Adding %1.").arg(stream_name), true);
 				mStreamsComboBox->addItem(stream_name, object.toVariantMap());
 
+				info.log("Streams", "Retrieving news", true);
 				// Get the news
 				QNetworkRequest request(QUrl("https://uberent.com/Launcher/StreamNews?StreamName=" + stream_name + "&ticket=" + mSessionTicket));
 				request.setRawHeader("X-Authorization", mSessionTicket.toUtf8());
@@ -729,10 +739,13 @@ void PAAlternativeLauncher::streamNewsReplyFinished()
 	{
 		if(reply->error() == QNetworkReply::NoError)
 		{
+			info.log("News", "Retrieved.", true);
 			QString stream_name = reply->request().attribute(QNetworkRequest::User).toString();
+			info.log("News", QString("Is for %1.").arg(stream_name), true);
 			if(!stream_name.isEmpty())
 			{
 				mStreamNews[stream_name] = reply->readAll();
+				info.log("News", "Loading into text browser", true);
 				if(mStreamsComboBox->currentText() == stream_name)
 					mPatchTextBrowser->setHtml(mStreamNews[stream_name]);
 			}
