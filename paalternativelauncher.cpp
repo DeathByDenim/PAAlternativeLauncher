@@ -60,9 +60,14 @@ PAAlternativeLauncher::PAAlternativeLauncher()
 	info.setParent(this);
 	info.log("Starting launcher", QDateTime::currentDateTime().toString());
 
-	QPalette* palette = new QPalette();
- 	palette->setBrush(QPalette::Background,*(new QBrush(*(new QPixmap(":/img/img_bground_galaxy_01.png")))));
- 	setPalette(*palette);
+	if(mNetworkAccessManager == NULL)
+		info.critical("Init", "Network Access Manager failed to initialize.");
+
+	QPalette palette;
+	QPixmap backgroundPixmap(":/img/img_bground_galaxy_01.png");
+	QBrush backgroundBrush(backgroundPixmap);
+ 	palette.setBrush(QPalette::Background, backgroundBrush);
+ 	setPalette(palette);
 
 	QWidget *main_widget = new QWidget(this);
 	QVBoxLayout *main_layout = new QVBoxLayout(main_widget);
