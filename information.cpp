@@ -27,24 +27,32 @@ void Information::setVerbose(bool verbose)
 
 void Information::critical(const QString& title, const QString& text)
 {
+	mMutex.lock();
+	QString errortext = text;
 	m_logfile.write("[ERROR] (", 9);
 	m_logfile.write(title.toUtf8());
 	m_logfile.write(") ", 2);
-	m_logfile.write(text.toUtf8());
+	m_logfile.write(errortext.replace('\n', ' ').toUtf8());
 	m_logfile.write("\n", 1);
 	m_logfile.flush();
 	QMessageBox::critical(m_parent, title, text);
+	mMutex.unlock();
 }
 
 bool Information::warning(const QString& title, const QString& text)
 {
+	mMutex.lock();
 	m_logfile.write("[WARN]  (", 9);
 	m_logfile.write(title.toUtf8());
 	m_logfile.write(") ", 2);
 	m_logfile.write(text.toUtf8());
 	m_logfile.write("\n", 1);
 	m_logfile.flush();
-	return(QMessageBox::warning(m_parent, title, text, QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes);
+
+	bool yes = (QMessageBox::warning(m_parent, title, text, QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes);
+	mMutex.unlock();
+
+	return yes;
 }
 
 void Information::log(const QString& title, const QString& text, bool verbose)
@@ -52,12 +60,14 @@ void Information::log(const QString& title, const QString& text, bool verbose)
 	if(verbose && !m_verbose)
 		return;
 
+	mMutex.lock();
 	m_logfile.write("[LOG]   (", 9);
 	m_logfile.write(title.toUtf8());
 	m_logfile.write(") ", 2);
 	m_logfile.write(text.toUtf8());
 	m_logfile.write("\n", 1);
 	m_logfile.flush();
+	mMutex.unlock();
 }
 
 Information info;

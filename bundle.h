@@ -41,33 +41,31 @@ private:
 		bool executable;
 		bool verified;
 		QFuture<bool> future;
+		bool compressed;
+		z_stream zstream;
+		Bytef *zbuffer;
+		QFile *file;
 	};
 
 	ulong mTotalSize;
 	QList<File> mFiles;
+	const size_t mZstreamBufferSize;
 	int mNumVerified;
 	int mNumToVerify;
 	QString mInstallPath;
 	Patcher *mPatcher;
 	bool mNeedsDownloading;
 	QString mChecksum;
-	z_stream mZstream;
-	const qint64 mBufferSize;
-	Bytef * mBuffer;
 	qint64 mBytesDownloaded;
 	qint64 mBytesProgress;
-	QFile *mCurrentFile;
-	bool mCurrentFileIsGzipped;
-	int mFilesCurrentIndex;
 	QMap<QString,QString> mSymLinkLater;
 
 	static bool verifySHA1(Bundle::File file_entry, bool* downloading, Patcher* patcher, QString install_path);
-	void prepareZLib();
-    void prepareFile();
-    void nextFile();
+    void prepareFile(File* file);
     void processData(QNetworkReply* reply, qint64 bytes_available);
 	bool createSymbolicLink(const QString& from, const QString& to);
 	bool createEmptyFile(const QString& file_name);
+	void closeFile(File *file);
 
 private slots:
 	void verifyFinished();

@@ -15,19 +15,12 @@
 #include <zlib.h>
 
 Bundle::Bundle(QString install_path, Patcher *patcher)
- : QObject(), mInstallPath(install_path), mPatcher(patcher), mNeedsDownloading(false), mBufferSize(10*1024)
+ : QObject(), mInstallPath(install_path), mPatcher(patcher), mNeedsDownloading(false), mZstreamBufferSize(1024*1024)
 {
-	mBuffer = NULL;
-	mCurrentFile = NULL;
 }
 
 Bundle::~Bundle()
 {
-	if(mBuffer)
-		delete[] mBuffer;
-	
-	if(mCurrentFile)
-		delete mCurrentFile;
 }
 
 void Bundle::verify(QJsonObject* array)
@@ -50,6 +43,9 @@ void Bundle::verify(QJsonObject* array)
 		file_entry.size = (*e).toObject()["size"].toString().toULong();
 		file_entry.sizeZ = (*e).toObject()["sizeZ"].toString().toULong();
 		file_entry.executable = (*e).toObject()["executable"].toBool();
+		file_entry.file = NULL;
+		file_entry.compressed = (file_entry.sizeZ != 0);
+		file_entry.zbuffer = NULL;
 
 		if(file_entry.size == 0)
 		{
@@ -137,6 +133,7 @@ bool Bundle::verifySHA1(Bundle::File file_entry, bool* downloading, Patcher *pat
 		}
 		else
 		{
+			info.log("Verification failed", file_entry.filename, true);
 			*downloading = true;
 			return false;
 		}
@@ -161,17 +158,14 @@ void Bundle::verifyFinished()
 
 void Bundle::downloadAndExtract(QNetworkAccessManager* network_access_manager, QString download_url)
 {
+	info.log("Download bundle", mChecksum);
+
 	QNetworkRequest request(QUrl(download_url.arg(mChecksum)));
 	request.setRawHeader("X-Clacks-Overhead", "GNU Terry Pratchett");
 	request.setRawHeader("User-Agent", QString("PAAlternativeLauncher/%1").arg(VERSION).toUtf8());
 
 	mBytesDownloaded = 0;
 	mBytesProgress = 0;
-	mFilesCurrentIndex = 0;
-	prepareFile();
-
-	if(mCurrentFileIsGzipped)
-		prepareZLib();
 
 	QNetworkReply *reply = network_access_manager->get(request);
 	connect(reply, SIGNAL(finished()), SLOT(downloadFinished()));
@@ -195,21 +189,6 @@ void Bundle::downloadReadyRead()
 			qint64 bytes_available = reply->bytesAvailable();
 			if(bytes_available > 0)
 			{
-				while(mFilesCurrentIndex < mFiles.count() - 1 && mBytesDownloaded + bytes_available > mFiles[mFilesCurrentIndex+1].offset && bytes_available > 0)
-				{
-					qint64 bytes_available_previous_file = mFiles[mFilesCurrentIndex+1].offset - mBytesDownloaded;
-					if(bytes_available_previous_file == 0)
-					{
-						nextFile();
-						continue;
-					}
-
-					processData(reply, bytes_available_previous_file);
-					bytes_available -= bytes_available_previous_file;
-
-					mBytesDownloaded += bytes_available_previous_file;
-				}
-
 				processData(reply, bytes_available);
 			}
 
@@ -228,41 +207,102 @@ void Bundle::downloadReadyRead()
 
 void Bundle::processData(QNetworkReply *reply, qint64 bytes_available)
 {
-	if(bytes_available == 0 || error_occurred)
-		return;
-
-	QByteArray input = reply->read(bytes_available);
-
-	if(mCurrentFileIsGzipped)
+	if(!reply)
 	{
-		int res;
+		error_occurred = true;
+		emit error("NULL reply in processData");
+		return;
+	}
 
-		mZstream.next_in = (Bytef *)input.constData();
-		mZstream.avail_in = bytes_available;
+	QByteArray data = reply->readAll();
 
-		do
+	for(QList<File>::iterator f = mFiles.begin(); f != mFiles.end(); ++f)
+	{
+// Three cases to visualize the calculations
+//
+//    |.......*.....|.............|..*...........|
+//    0       6     10           20  22          30
+//
+//  first block:  mBytesDownloaded =  0
+//                bytes_available  = 10
+//                f->offset        =  6
+//                endoffset        = 22
+//
+//  second block: mBytesDownloaded = 10
+//                bytes_available  = 10
+//                f->offset        =  6
+//                endoffset        = 22
+//
+//  third block:  mBytesDownloaded = 20
+//                bytes_available  = 10
+//                f->offset        =  6
+//                endoffset        = 22
+
+// Within block case
+//
+//    |..........*....*........|
+//   10         18    22      30
+//
+//                mBytesDownloaded = 10
+//                bytes_available  = 20
+//                f->offset        = 18
+//                endoffset        = 22
+
+		ulong endoffset = (f->compressed ? f->offset + f->sizeZ : f->offset + f->size);
+		if(mBytesDownloaded + bytes_available > f->offset && mBytesDownloaded <= endoffset)
 		{
-			uInt old_avail_out = mZstream.avail_out;
-			res = inflate(&mZstream, Z_SYNC_FLUSH);
-			if(res != Z_OK && res != Z_STREAM_END)
+			// Our file has data in this block.
+
+			if(f->file == NULL)
 			{
-				error_occurred = true;
-				reply->abort();
-				emit error(QString("ZLib ReadyRead error (%1)\n%2").arg(res).arg(mZstream.msg));
-				return;
+				prepareFile(&(*f));
+			}
+			ulong start_in_data = 0;
+			if(f->offset > mBytesDownloaded)
+				start_in_data = f->offset - mBytesDownloaded;
+
+			ulong length_in_data = bytes_available - start_in_data;
+			if(mBytesDownloaded + bytes_available > endoffset)
+			{
+				Q_ASSERT(endoffset >= mBytesDownloaded + start_in_data);
+				length_in_data = endoffset - mBytesDownloaded - start_in_data;
 			}
 
-			mCurrentFile->write((const char *)mBuffer, old_avail_out - mZstream.avail_out);
-			mZstream.avail_out = mBufferSize;
-			mZstream.next_out = mBuffer;
-		}
-		while(mZstream.avail_in > 0);
+			if(f->compressed)
+			{
+				int res;
 
-		if(res == Z_STREAM_END)
-			nextFile();
+				QByteArray snippet(data.mid(start_in_data, length_in_data).constData(), length_in_data);
+				f->zstream.next_in = (Bytef *)snippet.constData();
+				f->zstream.avail_in = length_in_data;
+
+				do
+				{
+					uInt old_avail_out = f->zstream.avail_out;
+					res = inflate(&(f->zstream), Z_SYNC_FLUSH);
+					if(res != Z_OK && res != Z_STREAM_END)
+					{
+						error_occurred = true;
+						reply->abort();
+						emit error(QString("ZLib ReadyRead error (%1)\n%2").arg(mChecksum).arg(f->zstream.msg));
+						return;
+					}
+
+					f->file->write((const char *)f->zbuffer, old_avail_out - f->zstream.avail_out);
+					f->zstream.avail_out = mZstreamBufferSize;
+					f->zstream.next_out = f->zbuffer;
+				}
+				while(f->zstream.avail_in > 0);
+			}
+			else
+				f->file->write(data.mid(start_in_data, length_in_data));
+		}
+		else
+		{
+			// Our file has no business here. So if it's open, close it.
+			closeFile(&(*f));
+		}
 	}
-	else
-		mCurrentFile->write(input);
 }
 
 void Bundle::downloadFinished()
@@ -284,20 +324,11 @@ void Bundle::downloadFinished()
 			return;
 		}
 
-		if(mCurrentFileIsGzipped)
+		for(QList<File>::iterator f = mFiles.begin(); f != mFiles.end(); ++f)
 		{
-			int res = inflateEnd(&mZstream);
-			if(res != Z_OK && res != Z_STREAM_END)
-			{
-				error_occurred = true;
-				reply->abort();
-				emit error(QString("ZLib downloadFinished error (%1)\n%2").arg(res).arg(mZstream.msg));
-				return;
-			}
+			closeFile(&(*f));
 		}
-		mCurrentFile->close();
-		delete mCurrentFile;
-		mCurrentFile = NULL;
+
 
 		reply->deleteLater();
 
@@ -311,71 +342,62 @@ void Bundle::downloadProgress(qint64 downloaded, qint64)
 	mBytesProgress = downloaded;
 }
 
-
-void Bundle::prepareZLib()
-{
-	if(mBuffer == NULL)
-		mBuffer = new Bytef[mBufferSize];
-
-	mZstream.next_out = mBuffer;
-	mZstream.avail_out = mBufferSize;
-	mZstream.next_in = Z_NULL;
-	mZstream.avail_in = 0;
-	mZstream.zalloc = Z_NULL;
-	mZstream.zfree = Z_NULL;
-	mZstream.opaque = Z_NULL;
-	
-	int res = inflateInit2(&mZstream, 16 + MAX_WBITS);
-	if(res != Z_OK)
-	{
-		error_occurred = true;
-		emit error(QString("prepareZLib error (%1)\n%2").arg(res).arg(mZstream.msg));
-		return;
-	}
-}
-
-void Bundle::prepareFile()
+void Bundle::prepareFile(File *file)
 {
 	// Create the necessary directories.
-	QFileInfo file_info(mInstallPath + "/" + mFiles[mFilesCurrentIndex].filename);
+	QFileInfo file_info(mInstallPath + "/" + file->filename);
 	file_info.absoluteDir().mkpath(".");
 
-	mCurrentFile = new QFile(file_info.absoluteFilePath());
-	if(!mCurrentFile->open(QFile::WriteOnly))
+	file->file = new QFile(file_info.absoluteFilePath());
+	if(!file->file->open(QFile::WriteOnly))
 	{
 		error_occurred = true;
-		emit error(tr("Error occurred while opening file \"%1\"\n%2").arg(mCurrentFile->fileName()).arg(mCurrentFile->errorString()));
+		emit error(QString("Can't write to \"%1\"").arg(file->filename));
+		return;
 	}
+	if(file->compressed)
+	{
+		file->zbuffer = new Bytef[mZstreamBufferSize];
+		file->zstream.next_out = file->zbuffer;
+		file->zstream.avail_out = mZstreamBufferSize;
+		file->zstream.next_in = Z_NULL;
+		file->zstream.avail_in = 0;
+		file->zstream.zalloc = Z_NULL;
+		file->zstream.zfree = Z_NULL;
+		file->zstream.opaque = Z_NULL;
 
-	if(mFiles[mFilesCurrentIndex].executable)
-		mCurrentFile->setPermissions(mCurrentFile->permissions() | QFile::ExeUser | QFile::ExeGroup | QFile::ExeOther);
-
-	mCurrentFileIsGzipped = (mFiles[mFilesCurrentIndex].sizeZ > 0);
+		int res = inflateInit2(&(file->zstream), 16 + MAX_WBITS);
+		if(res != Z_OK)
+		{
+			error_occurred = true;
+			emit error(QString("prepareZLib error (%1)\n%2").arg(res).arg(file->zstream.msg));
+			return;
+		}
+	}
+	if(file->executable)
+		file->file->setPermissions(file->file->permissions() | QFile::ExeUser | QFile::ExeGroup | QFile::ExeOther);
 }
 
-void Bundle::nextFile()
+void Bundle::closeFile(File* file)
 {
-	mFilesCurrentIndex++;
-
-	if(mFilesCurrentIndex < mFiles.count())
+	if(file->file != NULL)
 	{
-		mCurrentFile->close();
-		delete mCurrentFile;
-		mCurrentFile = NULL;
-		if(mCurrentFileIsGzipped)
+		file->file->close();
+		delete file->file;
+		file->file = NULL;
+
+		if(file->zbuffer)
 		{
-			int res = inflateEnd(&mZstream);
+			delete[] file->zbuffer;
+			file->zbuffer = NULL;
+			int res = inflateEnd(&file->zstream);
 			if(res != Z_OK && res != Z_STREAM_END)
 			{
 				error_occurred = true;
-				emit error(QString("ZLib nextFile error (%1)\n%2").arg(res).arg(mZstream.msg));
+				emit error(QString("ZLib closeFile error (%1)\n%2").arg(res).arg(file->zstream.msg));
 				return;
 			}
 		}
-
-		prepareFile();
-		if(mCurrentFileIsGzipped)
-			prepareZLib();
 	}
 }
 

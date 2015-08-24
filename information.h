@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QFile>
+#include <QMutex>
 
 class QWidget;
 
@@ -24,6 +25,7 @@ private:
 	QWidget *m_parent;
 	QFile m_logfile;
 	bool m_verbose;
+	QMutex mMutex;
 };
 
 extern Information info;
