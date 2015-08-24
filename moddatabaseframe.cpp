@@ -63,6 +63,10 @@ ModDatabaseFrame::ModDatabaseFrame(QWidget* parent)
 
 ModDatabaseFrame::~ModDatabaseFrame()
 {
+	for(QList<mod_t *>::iterator mod = mModList.begin(); mod != mModList.end(); ++mod)
+	{
+		delete *mod;
+	}
 }
 
 void ModDatabaseFrame::getMoreClicked(bool)
@@ -330,59 +334,54 @@ QWidget * ModDatabaseFrame::loadMods(ModDatabaseFrame::mod_type type, QWidget* p
 		}
 	}
 
-	if(mod_list.count() > 0)
+	std::sort(mod_list.begin(), mod_list.end(), priorityCompare);
+
+	QWidget *main_widget = new QWidget(parent);
+	main_widget->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+	QVBoxLayout *main_layout = new QVBoxLayout(main_widget);
+
+	QString header;
+	switch(type)
 	{
-		std::sort(mod_list.begin(), mod_list.end(), priorityCompare);
-
-		QWidget *main_widget = new QWidget(parent);
-		main_widget->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-		QVBoxLayout *main_layout = new QVBoxLayout(main_widget);
-
-		QString header;
-		switch(type)
-		{
-			case client_mod:
-				header = tr("Client Mods");
-				break;
-			case server_mod:
-				header = tr("Server Mods");
-				break;
-		}
-
-		QLabel *header_label = new QLabel(header, main_widget);
-		header_label->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-		QFont header_font = header_label->font();
-		header_font.setBold(true);
-		header_font.setUnderline(true);
-		QPalette header_palette = header_label->palette();
-		header_palette.setColor(QPalette::WindowText, Qt::white);
-		header_label->setFont(header_font);
-		header_label->setPalette(header_palette);
-		main_layout->addWidget(header_label);
-
-		for(QList<mod_t *>::iterator mod = mod_list.begin(); mod != mod_list.end(); ++mod)
-		{
-			QCheckBox *mod_check_box = new QCheckBox((*mod)->name, main_widget);
-			mod_check_box->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
-			mod_check_box->setChecked((*mod)->enabled);
-			if((*mod)->identifier == "com.pa.deathbydenim.dpamm" || (*mod)->identifier == "com.pa.raevn.pamm" || (*mod)->identifier == "com.pa.pamm.server")
-				mod_check_box->setEnabled(false);
-
-			QPalette mod_check_box_palette = mod_check_box->palette();
-			mod_check_box_palette.setColor(QPalette::WindowText, Qt::white);
-			mod_check_box->setPalette(mod_check_box_palette);
-			main_layout->addWidget(mod_check_box);
-			(*mod)->check_box = mod_check_box;
-
-			connect(mod_check_box, SIGNAL(stateChanged(int)), SLOT(modCheckBoxStateChanged(int)));
-		}
-
-		mModList.append(mod_list);
-
-		return main_widget;
+		case client_mod:
+			header = tr("Client Mods");
+			break;
+		case server_mod:
+			header = tr("Server Mods");
+			break;
 	}
-	else
-		return NULL;
+
+	QLabel *header_label = new QLabel(header, main_widget);
+	header_label->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+	QFont header_font = header_label->font();
+	header_font.setBold(true);
+	header_font.setUnderline(true);
+	QPalette header_palette = header_label->palette();
+	header_palette.setColor(QPalette::WindowText, Qt::white);
+	header_label->setFont(header_font);
+	header_label->setPalette(header_palette);
+	main_layout->addWidget(header_label);
+
+	for(QList<mod_t *>::iterator mod = mod_list.begin(); mod != mod_list.end(); ++mod)
+	{
+		QCheckBox *mod_check_box = new QCheckBox((*mod)->name, main_widget);
+		mod_check_box->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Minimum);
+		mod_check_box->setChecked((*mod)->enabled);
+		if((*mod)->identifier == "com.pa.deathbydenim.dpamm" || (*mod)->identifier == "com.pa.raevn.pamm" || (*mod)->identifier == "com.pa.pamm.server")
+			mod_check_box->setEnabled(false);
+
+		QPalette mod_check_box_palette = mod_check_box->palette();
+		mod_check_box_palette.setColor(QPalette::WindowText, Qt::white);
+		mod_check_box->setPalette(mod_check_box_palette);
+		main_layout->addWidget(mod_check_box);
+		(*mod)->check_box = mod_check_box;
+
+		connect(mod_check_box, SIGNAL(stateChanged(int)), SLOT(modCheckBoxStateChanged(int)));
+	}
+
+	mModList.append(mod_list);
+
+	return main_widget;
 }
 
 void ModDatabaseFrame::modCheckBoxStateChanged(int state)
