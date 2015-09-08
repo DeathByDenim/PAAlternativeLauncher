@@ -412,7 +412,7 @@ bool Bundle::createSymbolicLink(const QString& from, const QString& to)
 bool Bundle::createEmptyFile(const QString& file_name)
 {
 	QFileInfo(mInstallPath + '/' + file_name).absoluteDir().mkpath(".");
-	QFile file(file_name);
+	QFile file(mInstallPath + '/' + file_name);
 	if(file.open(QFile::WriteOnly))
 	{
 		file.close();
