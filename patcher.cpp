@@ -14,6 +14,7 @@
 #  include <cstring>
 #  include <cerrno>
 #endif
+#include <algorithm>
 
 bool error_occurred = false;
 
@@ -49,6 +50,9 @@ void Patcher::parseManifest()
 
 	if(parseerror.error == QJsonParseError::NoError)
 	{
+		// Helper function for outputting duplicate files to "duplicates.csv" for debugging
+//		findSymlinks();
+
 		startVerifying();
 	}
 	else
@@ -153,6 +157,60 @@ void Patcher::bundleFinished()
 
 		emit stateChange("Done");
 		emit done();
+	}
+}
+
+void Patcher::findSymlinks()
+{
+	if(mDocument.isObject())
+	{
+		QList<file_entry_t> file_entries;
+
+		QJsonArray bundles = mDocument.object()["bundles"].toArray();
+		int i = 0;
+		mNumBundles = bundles.count();
+
+		// Make a full list of all of the files.
+		for(QJsonArray::const_iterator b = bundles.constBegin(); b != bundles.constEnd(); ++b)
+		{
+			QJsonObject bundle_json_object = (*b).toObject();
+			QJsonArray entries = bundle_json_object["entries"].toArray();
+			for(QJsonArray::const_iterator e = entries.constBegin(); e != entries.constEnd(); ++e)
+			{
+				QJsonObject entry_object = (*e).toObject();
+
+				file_entry_t entry;
+				entry.size = entry_object["size"].toString().toULong();
+				if(entry.size == 0)
+					continue;
+
+				entry.sizeZ = entry_object["sizeZ"].toString().toULong();
+				entry.filename = entry_object["filename"].toString();
+				entry.i = i;
+				entry.checksum = entry_object["checksum"].toString();
+				file_entries.append(entry);
+			}
+
+			i++;
+		}
+
+		std::sort(file_entries.begin(), file_entries.end());
+		
+		QFile list("duplicates.csv");
+		list.open(QFile::WriteOnly);
+
+		file_entry_t last;
+		last.checksum = "";
+		for(QList<file_entry_t>::const_iterator e = file_entries.constBegin(); e != file_entries.constEnd(); ++e)
+		{
+			if(last.checksum == (*e).checksum && last.i != (*e).i)
+			{
+				qDebug() << (*e).filename << "->" << last.filename;
+				list.write(QString("%1,%2,%3,%4\n").arg((*e).checksum).arg((*e).i).arg((*e).filename).arg((*e).sizeZ == 0 ? (*e).size : (*e).sizeZ).toUtf8());
+			}
+			last = *e;
+		}
+		list.close();
 	}
 }
 

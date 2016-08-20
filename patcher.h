@@ -23,6 +23,16 @@ public:
 
 
 private:
+	struct file_entry_t
+	{
+		int i;
+		QString checksum;
+		QString filename;
+		ulong size;
+		ulong sizeZ;
+		bool operator<(file_entry_t const& b) const { return checksum < b.checksum; }
+	};
+
 	QJsonDocument mDocument;
 	QString mInstallPath;
 	QString mDownloadUrl;
@@ -51,6 +61,7 @@ private slots:
 	void bundleVerifyDone();
 	void bundleFinished();
 	void bundleError(QString error);
+    void findSymlinks();
 	
 public slots:
     void parseManifest();
