@@ -138,10 +138,10 @@ PAAlternativeLauncher::PAAlternativeLauncher()
 	middle_horizontal_layout->addWidget(install_path_widget);
 
 	centre_layout->addWidget(middle_horizontal_widget);
-
+/*
 	mModDatabaseFrame = new ModDatabaseFrame(centre_widget);
 	centre_layout->addWidget(mModDatabaseFrame);
-
+*/
 	main_layout->addWidget(centre_widget);
 
 	QDialogButtonBox *button_box = new QDialogButtonBox(main_widget);
@@ -425,7 +425,7 @@ void PAAlternativeLauncher::streamsComboBoxCurrentIndexChanged(int)
 		mUpdateAvailableLabel->setVisible(uber_version != current_version);
 	}
 
-	mModDatabaseFrame->setVisible(!mExtraParameters.contains("--nomods"));
+//	mModDatabaseFrame->setVisible(!mExtraParameters.contains("--nomods"));
 }
 
 void PAAlternativeLauncher::installPathButtonClicked(bool)
@@ -533,7 +533,7 @@ void PAAlternativeLauncher::advancedPushButtonClicked(bool)
 		mUseOptimus = advanceddialog->useOptimus();
 		settings.setValue(mStreamsComboBox->currentText() + "/extraparameters", mExtraParameters);
 		settings.setValue(mStreamsComboBox->currentText() + "/useoptirun", (int)mUseOptimus);
-		mModDatabaseFrame->setVisible(!mExtraParameters.contains("--nomods"));
+//		mModDatabaseFrame->setVisible(!mExtraParameters.contains("--nomods"));
 	}
 
 	delete advanceddialog;

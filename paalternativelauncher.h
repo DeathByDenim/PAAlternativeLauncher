@@ -58,7 +58,7 @@ private:
 	QString mExtraParameters;
 	AdvancedDialog::optimus_t mUseOptimus;
 	QThread mPatcherThread;
-	ModDatabaseFrame *mModDatabaseFrame;
+//	ModDatabaseFrame *mModDatabaseFrame;
     QPushButton* mLaunchButton;
 
 	void prepareZLib();
