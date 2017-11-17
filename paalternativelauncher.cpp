@@ -571,6 +571,7 @@ void PAAlternativeLauncher::authenticateFinished()
 			{
 				QSettings settings;
 				settings.setValue("login/sessionticket", mSessionTicket);
+				settings.setValue("login/username", mUserNameLineEdit->text());
 
 				QNetworkRequest request(QUrl("https://uberent.com/Launcher/ListStreams?Platform=" + mPlatform));
 				request.setRawHeader("X-Authorization", mSessionTicket.toUtf8());
