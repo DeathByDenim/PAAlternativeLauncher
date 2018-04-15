@@ -31,6 +31,7 @@
 #  include <windows.h>
 #endif
 #include <QFile>
+#include <QDir>
 #include <zlib.h>
 #include "information.h"
 #include "version.h"
@@ -406,7 +407,8 @@ void PAAlternativeLauncher::streamsComboBoxCurrentIndexChanged(int)
 
 	mInstallPathLineEdit->setText(install_path);
 	mExtraParameters = settings.value(current_stream + "/extraparameters").toString();
-	mUseOptimus = (AdvancedDialog::optimus_t)settings.value(current_stream + "/useoptirun").toInt();
+	mUseOptimus = (AdvancedDialog::optimus_t)settings.value(current_stream + "/useoptirun", 0).toInt();
+	mUseSteamRuntime = settings.value(current_stream + "/usesteamruntime", true).toBool();
 
 	QString uber_version = mStreamsComboBox->currentData().toMap()["BuildId"].toString();
 	QString current_version = currentInstalledVersion();
@@ -471,6 +473,10 @@ void PAAlternativeLauncher::downloadPushButtonClicked(bool)
 		mDownloadButton->setEnabled(false);
 		mPatchProgressbar->setEnabled(true);
 
+		// Temporarily rename steam-runtime back to the original name so it gets updated too.
+		if(!mUseSteamRuntime)
+			QDir(mInstallPathLineEdit->text()).rename("steam-runtime.bak", "steam-runtime");
+
 		mPatchLabel->setText("Downloading manifest");
 
 		prepareZLib();
@@ -492,6 +498,8 @@ void PAAlternativeLauncher::patcherDone()
 	mPatchProgressbar->setEnabled(false);
 	mPatcherThread.quit();
 	mNetworkAccessManager = new QNetworkAccessManager(this);
+	if(!mUseSteamRuntime)
+		QDir(mInstallPathLineEdit->text()).rename("steam-runtime", "steam-runtime.bak");
 
 	info.log("Patcher", "Done");
 }
@@ -502,6 +510,8 @@ void PAAlternativeLauncher::patcherError(QString error)
 	mPatchProgressbar->setEnabled(false);
 	mPatcherThread.quit();
 	mNetworkAccessManager = new QNetworkAccessManager(this);
+	if(!mUseSteamRuntime)
+		QDir(mInstallPathLineEdit->text()).rename("steam-runtime", "steam-runtime.bak");
 
 	info.critical("Patcher", error);
 }
@@ -526,14 +536,21 @@ void PAAlternativeLauncher::advancedPushButtonClicked(bool)
 {
 	QSettings settings(QSettings::UserScope, "DeathByDenim", "PAAlternativeLauncher");
 
-	AdvancedDialog *advanceddialog = new AdvancedDialog(mExtraParameters, mUseOptimus, this);
+	AdvancedDialog *advanceddialog = new AdvancedDialog(mExtraParameters, mUseOptimus, mUseSteamRuntime, this);
 	if(advanceddialog->exec() == QDialog::Accepted)
 	{
 		mExtraParameters = advanceddialog->parameters();
 		mUseOptimus = advanceddialog->useOptimus();
+		mUseSteamRuntime = advanceddialog->useSteamRuntime();
 		settings.setValue(mStreamsComboBox->currentText() + "/extraparameters", mExtraParameters);
 		settings.setValue(mStreamsComboBox->currentText() + "/useoptirun", (int)mUseOptimus);
+		settings.setValue(mStreamsComboBox->currentText() + "/usesteamruntime", mUseSteamRuntime);
 //		mModDatabaseFrame->setVisible(!mExtraParameters.contains("--nomods"));
+
+		if(mUseSteamRuntime)
+			QDir(mInstallPathLineEdit->text()).rename("steam-runtime.bak", "steam-runtime");
+		else
+			QDir(mInstallPathLineEdit->text()).rename("steam-runtime", "steam-runtime.bak");
 	}
 
 	delete advanceddialog;

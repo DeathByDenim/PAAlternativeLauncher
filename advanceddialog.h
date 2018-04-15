@@ -3,6 +3,7 @@
 
 #include <QDialog>
 #include <QLineEdit>
+#include <QCheckBox>
 
 class QGroupBox;
 class QLineEdit;
@@ -14,11 +15,12 @@ class AdvancedDialog : public QDialog
 public:
 	enum optimus_t {nooptimus, optirun, primusrun};
 
-	AdvancedDialog(const QString& extraparameters, const AdvancedDialog::optimus_t useoptimus, QWidget* parent = 0);
+	AdvancedDialog(const QString& extraparameters, const AdvancedDialog::optimus_t useoptimus, bool usesteamruntime, QWidget* parent = 0);
 	~AdvancedDialog();
 
 	QString parameters() {return m_parametersLineEdit->text();}
 	optimus_t useOptimus();
+	bool useSteamRuntime() {return m_useSteamRuntimeCheckBox->isChecked();}
 
 private:
 	QString m_parameters;
@@ -27,6 +29,7 @@ private:
 	QRadioButton* m_nooptimusRadioButton;
 	QRadioButton* m_optirunRadioButton;
 	QRadioButton* m_primusrunRadioButton;
+	QCheckBox* m_useSteamRuntimeCheckBox;
 };
 
 #endif // ADVANCEDDIALOG_H

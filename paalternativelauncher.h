@@ -57,6 +57,7 @@ private:
 	Patcher *mPatcher;
 	QString mExtraParameters;
 	AdvancedDialog::optimus_t mUseOptimus;
+	bool mUseSteamRuntime;
 	QThread mPatcherThread;
 //	ModDatabaseFrame *mModDatabaseFrame;
     QPushButton* mLaunchButton;
