@@ -815,7 +815,7 @@ void PAAlternativeLauncher::setState(PAAlternativeLauncher::EState state)
 	mLoginWidget->setVisible(state == login_state);
 	mDownloadWidget->setVisible(state == download_state);
 	mWaitWidget->setVisible(state == wait_state);
-	
+
 	if(state == login_state)
 	{
 		if(mUserNameLineEdit->text().isEmpty())
@@ -827,6 +827,7 @@ void PAAlternativeLauncher::setState(PAAlternativeLauncher::EState state)
 	{
 		mLaunchButton->setEnabled(true);
 		mDownloadButton->setEnabled(true);
+		mLaunchButton->setFocus();
 	}
 }
 
