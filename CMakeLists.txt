@@ -18,6 +18,9 @@ find_package(Qt5Network REQUIRED)
 find_package(Qt5Concurrent REQUIRED)
 find_package(ZLIB REQUIRED)
 
+add_definitions(-Wall)
+add_definitions(-Wextra)
+
 if(WIN32)
 	set(CMAKE_CXX_FLAGS "-mwindows")
 	set(paalternativelauncher_RCC_SRCS "paalternativelauncher.rc")

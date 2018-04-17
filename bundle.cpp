@@ -15,7 +15,7 @@
 #include <zlib.h>
 
 Bundle::Bundle(QString install_path, Patcher *patcher)
- : QObject(), mInstallPath(install_path), mPatcher(patcher), mNeedsDownloading(false), mZstreamBufferSize(1024*1024)
+ : QObject(), mZstreamBufferSize(1024*1024), mInstallPath(install_path), mPatcher(patcher), mNeedsDownloading(false)
 {
 }
 
@@ -249,7 +249,7 @@ void Bundle::processData(QNetworkReply *reply, qint64 bytes_available)
 //                endoffset        = 22
 
 		ulong endoffset = (f->compressed ? f->offset + f->sizeZ : f->offset + f->size);
-		if(mBytesDownloaded + bytes_available > f->offset && mBytesDownloaded <= endoffset)
+		if((ulong)mBytesDownloaded + bytes_available > f->offset && (ulong)mBytesDownloaded <= endoffset)
 		{
 			// Our file has data in this block.
 
@@ -258,11 +258,11 @@ void Bundle::processData(QNetworkReply *reply, qint64 bytes_available)
 				prepareFile(&(*f));
 			}
 			ulong start_in_data = 0;
-			if(f->offset > mBytesDownloaded)
+			if(f->offset > (ulong)mBytesDownloaded)
 				start_in_data = f->offset - mBytesDownloaded;
 
 			ulong length_in_data = bytes_available - start_in_data;
-			if(mBytesDownloaded + bytes_available > endoffset)
+			if((ulong)mBytesDownloaded + bytes_available > endoffset)
 			{
 				Q_ASSERT(endoffset >= mBytesDownloaded + start_in_data);
 				length_in_data = endoffset - mBytesDownloaded - start_in_data;
@@ -352,7 +352,7 @@ void Bundle::prepareFile(File *file)
 	if(!file->file->open(QFile::WriteOnly))
 	{
 		error_occurred = true;
-		emit error(QString("Can't write to \"%1\"").arg(file->filename));
+		emit error(QString("Can't write to \"%1\"\n%2").arg(mInstallPath + "/" + file->filename).arg(file->file->errorString()));
 		return;
 	}
 	if(file->compressed)
