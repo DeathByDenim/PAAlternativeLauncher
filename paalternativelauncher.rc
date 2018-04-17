@@ -1,8 +1,8 @@
 id ICON "img/icon.ico"
 
 1 VERSIONINFO
-FILEVERSION     0,6,2,0
-PRODUCTVERSION  0,6,2,0
+FILEVERSION     0,1,0,0
+PRODUCTVERSION  0,1,0,0
 BEGIN
   BLOCK "StringFileInfo"
   BEGIN
@@ -10,11 +10,11 @@ BEGIN
     BEGIN
       VALUE "CompanyName", "DeathByDenim"
       VALUE "FileDescription", "Alternative launcher for Planetary Annihilation"
-      VALUE "FileVersion", "0.6.2"
+      VALUE "FileVersion", "1.0.0"
       VALUE "InternalName", "paalternativelauncher"
       VALUE "OriginalFilename", "paalternativelauncher.exe"
       VALUE "ProductName", "PA Alternative Launcher"
-      VALUE "ProductVersion", "0.6.2"
+      VALUE "ProductVersion", "1.0.0"
     END
   END
 
