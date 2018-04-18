@@ -12,6 +12,7 @@ class QRadioButton;
 class AdvancedDialog : public QDialog
 {
 	Q_OBJECT
+
 public:
 	enum optimus_t {nooptimus, optirun, primusrun};
 

@@ -90,7 +90,7 @@ QWidget * ModDatabaseFrame::loadMods(ModDatabaseFrame::mod_type type, QWidget* p
 	QJsonArray enabled_mods;
 	QString mod_dir;
 	QString mods_json_file_name;
-	
+
 	switch(type)
 	{
 		case server_mod:
@@ -258,7 +258,7 @@ QWidget * ModDatabaseFrame::loadMods(ModDatabaseFrame::mod_type type, QWidget* p
 			}
 		}
 	}
-	
+
 	if(type == server_mod)
 	{
 		mod_t *stockmod = new mod_t;

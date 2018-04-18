@@ -126,7 +126,7 @@ void Patcher::bundleVerifyDone()
 {
 	mBundlesVerified++;
 	emit progress(100. * mBundlesVerified / mNumBundles);
-	
+
 	if(mBundlesVerified == mNumBundles)
 	{
 		emit stateChange("Downloading and extracting");

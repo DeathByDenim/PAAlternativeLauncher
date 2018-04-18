@@ -18,11 +18,11 @@ extern bool error_occurred;
 
 class Bundle : public QObject
 {
-    Q_OBJECT
+	Q_OBJECT
 
 public:
-    Bundle(QString install_path, Patcher* patcher);
-    ~Bundle();
+	Bundle(QString install_path, Patcher* patcher);
+	~Bundle();
 
 	void verify(QJsonObject* array);
 	QString checksum() {return mChecksum;}
@@ -61,8 +61,8 @@ private:
 	QMap<QString,QString> mSymLinkLater;
 
 	static bool verifySHA1(Bundle::File file_entry, bool* downloading, Patcher* patcher, QString install_path);
-    void prepareFile(File* file);
-    void processData(QNetworkReply* reply, qint64 bytes_available);
+	void prepareFile(File* file);
+	void processData(QNetworkReply* reply, qint64 bytes_available);
 	bool createSymbolicLink(const QString& from, const QString& to);
 	bool createEmptyFile(const QString& file_name);
 	void closeFile(File *file);
@@ -70,8 +70,8 @@ private:
 private slots:
 	void verifyFinished();
 	void downloadFinished();
-    void downloadReadyRead();
-    void downloadProgress(qint64,qint64);
+	void downloadReadyRead();
+	void downloadProgress(qint64,qint64);
 
 signals:
 	void downloadMe();

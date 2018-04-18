@@ -169,13 +169,11 @@ PAAlternativeLauncher::PAAlternativeLauncher()
 	mPatchLabel = new QLabel(main_widget);
 	mPatchLabel->setStyleSheet("QLabel {color: white; font-weight: bold}");
 	mPatchLabel->setAlignment(Qt::AlignCenter);
-//	connect(&m_patcher, SIGNAL(state(QString)), SLOT(patcherState(QString)));
 	main_layout->addWidget(mPatchLabel);
 
 	mPatchProgressbar = new QProgressBar(main_widget);
 	mPatchProgressbar->setMinimum(0);
 	mPatchProgressbar->setMaximum(100);
-//	connect(&m_patcher, SIGNAL(progress(int)), SLOT(patcherProgress(int)));
 	main_layout->addWidget(mPatchProgressbar);
 
 	QLabel *disclaimer_label2 = new QLabel(tr("This is an UNOFFICIAL launcher and not connected to Uber in any way."), main_widget);
@@ -278,16 +276,16 @@ QWidget* PAAlternativeLauncher::createLoginWidget(QWidget *parent)
 	form_layout->addRow(login_label);
 
 	mUserNameLineEdit = new QLineEdit(form_widget);
-    QLabel *user_name_label = new QLabel(tr("Uber ID"), form_widget);
-    user_name_label->setPalette(palette);
-    form_layout->addRow(user_name_label, mUserNameLineEdit);
+	QLabel *user_name_label = new QLabel(tr("Uber ID"), form_widget);
+	user_name_label->setPalette(palette);
+	form_layout->addRow(user_name_label, mUserNameLineEdit);
 
 	mPasswordLineEdit = new QLineEdit(form_widget);
 	mPasswordLineEdit->setEchoMode(QLineEdit::Password);
-    QLabel *password_label = new QLabel(tr("Password"), form_widget);
-    password_label->setPalette(palette);
+	QLabel *password_label = new QLabel(tr("Password"), form_widget);
+	password_label->setPalette(palette);
 	connect(mPasswordLineEdit, SIGNAL(returnPressed()), SLOT(passwordLineEditReturnPressed()));
-    form_layout->addRow(password_label, mPasswordLineEdit);
+	form_layout->addRow(password_label, mPasswordLineEdit);
 
 	QPushButton *login_button = new QPushButton(tr("Login"), form_widget);
 	form_layout->addRow(login_button);
@@ -436,8 +434,8 @@ void PAAlternativeLauncher::streamsComboBoxCurrentIndexChanged(int)
 void PAAlternativeLauncher::installPathButtonClicked(bool)
 {
 	QString install_path = QFileDialog::getExistingDirectory(this, tr("Choose installation directory"), mInstallPathLineEdit->text(), QFileDialog::ShowDirsOnly);
-    if(!install_path.isEmpty())
-        mInstallPathLineEdit->setText(install_path);
+	if(!install_path.isEmpty())
+		mInstallPathLineEdit->setText(install_path);
 }
 
 void PAAlternativeLauncher::downloadPushButtonClicked(bool)

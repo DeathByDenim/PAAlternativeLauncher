@@ -20,11 +20,12 @@ class ModDatabaseFrame;
 
 class PAAlternativeLauncher : public QMainWindow
 {
-Q_OBJECT
+	Q_OBJECT
+
 public:
-    PAAlternativeLauncher();
-    virtual ~PAAlternativeLauncher();
-	
+	PAAlternativeLauncher();
+	virtual ~PAAlternativeLauncher();
+
 private:
 	enum EState
 	{
@@ -75,24 +76,24 @@ public:
 	void resetTaskbarProgressBar();
 
 private slots:
-    void loginPushButtonClicked(bool);
-    void authenticateFinished();
-    void streamsFinished();
-    void manifestFinished();
-    void manifestReadyRead();
-    void passwordLineEditReturnPressed();
-    void streamsComboBoxCurrentIndexChanged(int);
-    void streamNewsReplyFinished();
-    void installPathButtonClicked(bool);
-    void downloadPushButtonClicked(bool);
+	void loginPushButtonClicked(bool);
+	void authenticateFinished();
+	void streamsFinished();
+	void manifestFinished();
+	void manifestReadyRead();
+	void passwordLineEditReturnPressed();
+	void streamsComboBoxCurrentIndexChanged(int);
+	void streamNewsReplyFinished();
+	void installPathButtonClicked(bool);
+	void downloadPushButtonClicked(bool);
 	void launchOfflinePushButtonClicked(bool);
 	void patcherError(QString error);
 	void patcherDone();
 	void patcherProgress(int percentage);
-    void advancedPushButtonClicked(bool);
-    void launchPushButtonClicked(bool);
-    void manifestDownloadProgress(qint64,qint64);
-    void patcherStateChange(QString state);
+	void advancedPushButtonClicked(bool);
+	void launchPushButtonClicked(bool);
+	void manifestDownloadProgress(qint64,qint64);
+	void patcherStateChange(QString state);
 };
 
 #endif // PAAlternativeLauncher_H

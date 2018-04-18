@@ -106,7 +106,6 @@ AdvancedDialog::AdvancedDialog(const QString& extraparameters, const AdvancedDia
 
 AdvancedDialog::~AdvancedDialog()
 {
-
 }
 
 AdvancedDialog::optimus_t AdvancedDialog::useOptimus()

@@ -329,7 +329,6 @@ void Bundle::downloadFinished()
 			closeFile(&(*f));
 		}
 
-
 		reply->deleteLater();
 
 		emit finished();

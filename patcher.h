@@ -10,7 +10,7 @@ class QNetworkAccessManager;
 
 class Patcher : public QObject
 {
-    Q_OBJECT
+	Q_OBJECT
 
 public:
 	Patcher(QObject* parent = 0);
@@ -61,10 +61,10 @@ private slots:
 	void bundleVerifyDone();
 	void bundleFinished();
 	void bundleError(QString error);
-    void findSymlinks();
-	
+	void findSymlinks();
+
 public slots:
-    void parseManifest();
+	void parseManifest();
 };
 
 #endif // PATCHER_H
