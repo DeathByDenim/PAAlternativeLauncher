@@ -71,6 +71,9 @@ private:
 	quint64 getFreeDiskspaceInMB(QString directory);
 	void launchPA(bool offline);
 
+public:
+	void resetTaskbarProgressBar();
+
 private slots:
     void loginPushButtonClicked(bool);
     void authenticateFinished();

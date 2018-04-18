@@ -23,6 +23,9 @@
 #include <QSettings>
 #include <QFileDialog>
 #include <QProcess>
+#if defined(linux)
+#  include <QtDBus>
+#endif
 #if defined(linux) || defined(__APPLE__)
 #  include <sys/statvfs.h>
 #  include <sys/errno.h>
@@ -501,6 +504,8 @@ void PAAlternativeLauncher::patcherDone()
 	if(!mUseSteamRuntime)
 		QDir(mInstallPathLineEdit->text()).rename("steam-runtime", "steam-runtime.bak");
 
+	resetTaskbarProgressBar();
+
 	info.log("Patcher", "Done");
 }
 
@@ -513,12 +518,24 @@ void PAAlternativeLauncher::patcherError(QString error)
 	if(!mUseSteamRuntime)
 		QDir(mInstallPathLineEdit->text()).rename("steam-runtime", "steam-runtime.bak");
 
+	resetTaskbarProgressBar();
+
 	info.critical("Patcher", error);
 }
 
 void PAAlternativeLauncher::patcherProgress(int percentage)
 {
 	mPatchProgressbar->setValue(percentage);
+#if defined(linux)
+	QDBusMessage signal = QDBusMessage::createSignal("/", "com.canonical.Unity.LauncherEntry", "Update");
+	QVariantMap properties;
+	double progress_value = percentage / 100.;
+	properties["progress-visible"] = true;
+	properties["progress"] = progress_value;
+
+	signal << "application://paalternativelauncher.desktop" << properties;
+	QDBusConnection::sessionBus().send(signal);
+#endif
 }
 
 void PAAlternativeLauncher::launchOfflinePushButtonClicked(bool)
@@ -942,6 +959,17 @@ void PAAlternativeLauncher::launchPA(bool offline)
 	}
 	else
 		info.critical(tr("Failed to launch"), tr("Error while starting PA with the following command:") + "\n" + command);
+}
+
+void PAAlternativeLauncher::resetTaskbarProgressBar()
+{
+#if defined(linux)
+	QDBusMessage signal = QDBusMessage::createSignal("/", "com.canonical.Unity.LauncherEntry", "Update");
+	QVariantMap properties;
+	properties["progress-visible"] = false;
+	signal << "application://paalternativelauncher.desktop" << properties;
+	QDBusConnection::sessionBus().send(signal);
+#endif
 }
 
 #include "paalternativelauncher.moc"
