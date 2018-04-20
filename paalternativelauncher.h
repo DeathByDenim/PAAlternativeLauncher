@@ -71,6 +71,10 @@ private:
 	QString currentInstalledVersion();
 	quint64 getFreeDiskspaceInMB(QString directory);
 	void launchPA(bool offline);
+	void convertOldSettings();
+
+protected:
+	void closeEvent(QCloseEvent *event);
 
 public:
 	void resetTaskbarProgressBar();

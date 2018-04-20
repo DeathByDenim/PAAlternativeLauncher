@@ -64,6 +64,8 @@ PAAlternativeLauncher::PAAlternativeLauncher()
 	info.setParent(this);
 	info.log("Starting launcher", QDateTime::currentDateTime().toString());
 
+	convertOldSettings();
+
 	if(mNetworkAccessManager == NULL)
 		info.critical("Init", "Network Access Manager failed to initialize.");
 
@@ -206,14 +208,11 @@ PAAlternativeLauncher::PAAlternativeLauncher()
 	QSettings settings;
 	restoreGeometry(settings.value("mainwindow/geometry").toByteArray());
 
-	QStringList groups = settings.childGroups();
-	for(QStringList::const_iterator stream = groups.constBegin(); stream != groups.constEnd(); ++stream)
-	{
-		if(*stream != "login" && *stream != "mainwindow")
-		{
-			mStreamsComboBox->addItem(*stream);
-		}
-	}
+	settings.beginGroup("streams");
+	QStringList streamgroups = settings.childGroups();
+	for(QStringList::const_iterator stream = streamgroups.constBegin(); stream != streamgroups.constEnd(); ++stream)
+		mStreamsComboBox->addItem(*stream);
+	settings.endGroup();
 	mStreamsComboBox->setCurrentText("stable");
 
 	mSessionTicket = settings.value("login/sessionticket").toString();
@@ -398,6 +397,7 @@ void PAAlternativeLauncher::streamsComboBoxCurrentIndexChanged(int)
 	mPatchTextBrowser->setHtml(mStreamNews[current_stream]);
 
 	QSettings settings;
+	settings.beginGroup("streams");
 	QString install_path = settings.value(current_stream + "/installpath").toString();
 	if(install_path.isEmpty())
 #ifdef _WIN32
@@ -410,6 +410,7 @@ void PAAlternativeLauncher::streamsComboBoxCurrentIndexChanged(int)
 	mExtraParameters = settings.value(current_stream + "/extraparameters").toString();
 	mUseOptimus = (AdvancedDialog::optimus_t)settings.value(current_stream + "/useoptirun", 0).toInt();
 	mUseSteamRuntime = settings.value(current_stream + "/usesteamruntime", true).toBool();
+	settings.endGroup();
 
 	QString uber_version = mStreamsComboBox->currentData().toMap()["BuildId"].toString();
 	QString current_version = currentInstalledVersion();
@@ -454,7 +455,9 @@ void PAAlternativeLauncher::downloadPushButtonClicked(bool)
 	QString authsuffix = object["AuthSuffix"].toString();
 
 	QSettings settings;
+	settings.beginGroup("streams");
 	settings.setValue(mStreamsComboBox->currentText() + "/installpath", mInstallPathLineEdit->text());
+	settings.endGroup();
 
 #ifdef _WIN32
 	// Pamm or Pahub on Windows may use this registry setting.
@@ -557,9 +560,11 @@ void PAAlternativeLauncher::advancedPushButtonClicked(bool)
 		mExtraParameters = advanceddialog->parameters();
 		mUseOptimus = advanceddialog->useOptimus();
 		mUseSteamRuntime = advanceddialog->useSteamRuntime();
-		settings.setValue(mStreamsComboBox->currentText() + "/extraparameters", mExtraParameters);
-		settings.setValue(mStreamsComboBox->currentText() + "/useoptirun", (int)mUseOptimus);
-		settings.setValue(mStreamsComboBox->currentText() + "/usesteamruntime", mUseSteamRuntime);
+		settings.beginGroup("streams/" + mStreamsComboBox->currentText());
+		settings.setValue("/extraparameters", mExtraParameters);
+		settings.setValue("/useoptirun", (int)mUseOptimus);
+		settings.setValue("/usesteamruntime", mUseSteamRuntime);
+		settings.endGroup();
 //		mModDatabaseFrame->setVisible(!mExtraParameters.contains("--nomods"));
 
 		if(mUseSteamRuntime)
@@ -646,6 +651,8 @@ void PAAlternativeLauncher::streamsFinished()
 			setState(download_state);
 
 			mStreamsComboBox->clear();
+			QSettings settings;
+			settings.beginGroup("streams");
 			info.log("Streams", "Decoding data.", true);
 			QJsonDocument authjson = QJsonDocument::fromJson(reply->readAll());
 			QJsonArray streams = authjson.object()["Streams"].toArray();
@@ -661,6 +668,7 @@ void PAAlternativeLauncher::streamsFinished()
 
 				info.log("Streams", QString("Adding %1.").arg(stream_name), true);
 				mStreamsComboBox->addItem(stream_name, object.toVariantMap());
+				settings.setValue(stream_name + "/name", stream_name);
 
 				info.log("Streams", "Retrieving news", true);
 				// Get the news
@@ -672,6 +680,7 @@ void PAAlternativeLauncher::streamsFinished()
 				QNetworkReply *stream_news_reply = mNetworkAccessManager->get(request);
 				connect(stream_news_reply, SIGNAL(finished()), SLOT(streamNewsReplyFinished()));
 			}
+			settings.endGroup();
 		}
 		else
 		{
@@ -974,6 +983,44 @@ void PAAlternativeLauncher::resetTaskbarProgressBar()
 	signal << "application://paalternativelauncher.desktop" << properties;
 	QDBusConnection::sessionBus().send(signal);
 #endif
+}
+
+void PAAlternativeLauncher::closeEvent(QCloseEvent *event)
+{
+	QSettings settings;
+	settings.setValue("mainwindow/geometry", saveGeometry());
+
+	QMainWindow::closeEvent(event);
+}
+
+void PAAlternativeLauncher::convertOldSettings()
+{
+	QSettings settings;
+
+	QStringList groups = settings.childGroups();
+	for(QStringList::const_iterator g = groups.constBegin(); g != groups.constEnd(); ++g)
+	{
+		qDebug() << *g;
+		if(*g == "stable" || *g == "PTE")
+		{
+			settings.beginGroup(*g);
+			QString extra_parameters = settings.value("extraparameters").toString();
+			QString install_path = settings.value("installpath").toString();
+			AdvancedDialog::optimus_t use_optimus = (AdvancedDialog::optimus_t)settings.value("useoptirun", 0).toInt();
+			bool use_steam_runtime = settings.value("usesteamruntime", true).toBool();
+			settings.remove("");
+			settings.endGroup();
+
+			settings.beginGroup("streams");
+			settings.setValue(*g + "/extraparameters", extra_parameters);
+			settings.setValue(*g + "/installpath", install_path);
+			settings.setValue(*g + "/useoptirun", use_optimus);
+			settings.setValue(*g + "/usesteamruntime", use_steam_runtime);
+			settings.endGroup();
+
+		}
+	}
+
 }
 
 #include "paalternativelauncher.moc"
