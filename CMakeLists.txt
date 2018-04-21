@@ -20,8 +20,7 @@ if(UNIX)
 endif(UNIX)
 find_package(ZLIB REQUIRED)
 
-add_definitions(-Wall)
-add_definitions(-Wextra)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
 
 if(WIN32)
 	set(CMAKE_CXX_FLAGS "-mwindows")

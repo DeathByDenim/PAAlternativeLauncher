@@ -1000,7 +1000,6 @@ void PAAlternativeLauncher::convertOldSettings()
 	QStringList groups = settings.childGroups();
 	for(QStringList::const_iterator g = groups.constBegin(); g != groups.constEnd(); ++g)
 	{
-		qDebug() << *g;
 		if(*g == "stable" || *g == "PTE")
 		{
 			settings.beginGroup(*g);
