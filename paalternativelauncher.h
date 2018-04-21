@@ -13,6 +13,9 @@
 #include <QPushButton>
 #include <QMap>
 #include <QThread>
+#if defined(_WIN32)
+#  include <QtWinExtras>
+#endif
 #include "advanceddialog.h"
 
 class Patcher;
@@ -37,6 +40,9 @@ private:
 	QNetworkAccessManager *mNetworkAccessManager;
 	const QString mPlatform;
 	const QString mDefaultInstallPath;
+#if defined(_WIN32)
+	QWinTaskbarProgress *mWinTaskbarProgress;
+#endif
 	QString mSessionTicket;
 	z_stream mZstream;
 	const qint64 mBufferSize;
@@ -61,7 +67,7 @@ private:
 	bool mUseSteamRuntime;
 	QThread mPatcherThread;
 //	ModDatabaseFrame *mModDatabaseFrame;
-    QPushButton* mLaunchButton;
+	QPushButton* mLaunchButton;
 
 	void prepareZLib();
 	QWidget * createLoginWidget(QWidget * parent);
@@ -75,6 +81,9 @@ private:
 
 protected:
 	void closeEvent(QCloseEvent *event);
+#if defined(_WIN32)
+	void showEvent(QShowEvent *event);
+#endif
 
 public:
 	void resetTaskbarProgressBar();

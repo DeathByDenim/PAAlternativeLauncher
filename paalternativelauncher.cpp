@@ -32,6 +32,7 @@
 #elif defined(_WIN32)
 #  include <QProcessEnvironment>
 #  include <windows.h>
+#  include <QtWinExtras>
 #endif
 #include <QFile>
 #include <QDir>
@@ -51,6 +52,7 @@ PAAlternativeLauncher::PAAlternativeLauncher()
 #elif defined(_WIN32)
  , mPlatform("Windows")
  , mDefaultInstallPath("C:\\Games\\Uber Entertainment\\Planetary Annihilation Launcher\\Planetary Annihilation")
+ , mWinTaskbarProgress(NULL)
 #elif defined(__APPLE__)
  , mPlatform("OSX")
  , mDefaultInstallPath("/Applications/Planetary Annihilation")
@@ -536,6 +538,12 @@ void PAAlternativeLauncher::patcherProgress(int percentage)
 
 	signal << "application://paalternativelauncher.desktop" << properties;
 	QDBusConnection::sessionBus().send(signal);
+#elif defined(_WIN32)
+	if(mWinTaskbarProgress)
+	{
+		mWinTaskbarProgress->setVisible(true);
+		mWinTaskbarProgress->setValue(percentage);
+	}
 #endif
 }
 
@@ -992,6 +1000,17 @@ void PAAlternativeLauncher::closeEvent(QCloseEvent *event)
 
 	QMainWindow::closeEvent(event);
 }
+
+#if defined(_WIN32)
+void PAAlternativeLauncher::showEvent(QShowEvent* event)
+{
+	QWinTaskbarButton *button = new QWinTaskbarButton(this);
+	button->setWindow(windowHandle());
+	mWinTaskbarProgress = button->progress();
+
+	QMainWindow::showEvent(event);
+}
+#endif
 
 void PAAlternativeLauncher::convertOldSettings()
 {
