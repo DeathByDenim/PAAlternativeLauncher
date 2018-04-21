@@ -13,7 +13,7 @@ int main(int argc, char** argv)
 		info.setVerbose(true);
 
 	PAAlternativeLauncher foo;
-	foo.resetTaskbarProgressBar();
+	foo.resetTaskbarProgressBar(false);
 	foo.show();
 	return app.exec();
 }

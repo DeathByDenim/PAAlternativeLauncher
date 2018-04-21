@@ -86,7 +86,7 @@ protected:
 #endif
 
 public:
-	void resetTaskbarProgressBar();
+	void resetTaskbarProgressBar(bool error);
 
 private slots:
 	void loginPushButtonClicked(bool);

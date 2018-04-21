@@ -507,7 +507,7 @@ void PAAlternativeLauncher::patcherDone()
 	if(!mUseSteamRuntime)
 		QDir(mInstallPathLineEdit->text()).rename("steam-runtime", "steam-runtime.bak");
 
-	resetTaskbarProgressBar();
+	resetTaskbarProgressBar(false);
 
 	info.log("Patcher", "Done");
 }
@@ -521,7 +521,7 @@ void PAAlternativeLauncher::patcherError(QString error)
 	if(!mUseSteamRuntime)
 		QDir(mInstallPathLineEdit->text()).rename("steam-runtime", "steam-runtime.bak");
 
-	resetTaskbarProgressBar();
+	resetTaskbarProgressBar(true);
 
 	info.critical("Patcher", error);
 }
@@ -982,14 +982,25 @@ void PAAlternativeLauncher::launchPA(bool offline)
 		info.critical(tr("Failed to launch"), tr("Error while starting PA with the following command:") + "\n" + command);
 }
 
-void PAAlternativeLauncher::resetTaskbarProgressBar()
+void PAAlternativeLauncher::resetTaskbarProgressBar(bool error_occurred)
 {
 #if defined(linux)
+	Q_UNUSED(error_occurred);
 	QDBusMessage signal = QDBusMessage::createSignal("/", "com.canonical.Unity.LauncherEntry", "Update");
 	QVariantMap properties;
 	properties["progress-visible"] = false;
 	signal << "application://paalternativelauncher.desktop" << properties;
 	QDBusConnection::sessionBus().send(signal);
+#elif defined(_WIN32)
+	if(mWinTaskbarProgress)
+	{
+		if(error_occurred)
+			mWinTaskbarProgress->stop();
+		else
+			mWinTaskbarProgress->setVisible(false);
+	}
+#elif
+	Q_UNUSED(error_occurred);
 #endif
 }
 
