@@ -94,6 +94,9 @@ AdvancedDialog::AdvancedDialog(const QString& extraparameters, const AdvancedDia
 	m_useSteamRuntimeCheckBox = new QCheckBox(tr("Use steam-runtime"), this);
 	m_useSteamRuntimeCheckBox->setChecked(usesteamruntime);
 	mainLayout->addWidget(m_useSteamRuntimeCheckBox);
+#else
+	Q_UNUSED(useoptimus);
+	Q_UNUSED(usesteamruntime);
 #endif
 
 	QDialogButtonBox *buttonBox = new QDialogButtonBox(this);

@@ -999,7 +999,7 @@ void PAAlternativeLauncher::resetTaskbarProgressBar(bool error_occurred)
 		else
 			mWinTaskbarProgress->setVisible(false);
 	}
-#elif
+#else
 	Q_UNUSED(error_occurred);
 #endif
 }
