@@ -1,0 +1,240 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Product Id="*" Name="PA Alternative Launcher" Version="1.0.0" Manufacturer="PA Alternative Launcher"
+           UpgradeCode="760A2759-65B9-4A3B-A569-2081C4FBECE5"
+           Language="1033" Codepage="1252">
+    <Package Id="*" InstallerVersion="200" Compressed="yes" Languages="1033"
+             SummaryCodepage="1252" InstallScope="perMachine"/>
+    <Media Id="1" Cabinet="data.cab" EmbedCab="yes"/>
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed. If you are trying to downgrade, please uninstall the newer version first."
+                  AllowSameVersionUpgrades="yes"/>
+
+    <Icon Id="PAAlternativeLauncher.exe" SourceFile="PAAlternativeLauncher.exe" />
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="ProgramMenuFolder">
+        <Directory Id="ProductMenuDir" Name="PAAlternativeLauncher">
+          <Component Id="ProductMenuDir" Guid="*">
+            <RegistryValue Root="HKMU" Key="Software\[Manufacturer]\[ProductName]"
+                           Type="string" Name="ProductMenuDirInstalled" Value=""
+                           KeyPath="yes"/>
+            <RemoveFolder Id="ProductMenuDir" On="uninstall"/>
+          </Component>
+        </Directory>
+      </Directory>
+      <Directory Id="ProgramFiles64Folder">
+        <Directory Id="INSTALLDIR" Name="PA Alternative Launcher">
+          <Directory Id="BearerDir" Name="bearer"/>
+          <Directory Id="IconEnginesDir" Name="iconengines"/>
+          <Directory Id="ImageFormatsDir" Name="imageformats"/>
+          <Directory Id="PlatformPluginsDir" Name="platforms"/>
+          <Directory Id="TranslationsDir" Name="translations"/>
+        </Directory>
+      </Directory>
+    </Directory>
+
+    <DirectoryRef Id="INSTALLDIR">
+      <!-- Main Executable -->
+      <Component Guid="*">
+        <File Name="PAAlternativeLauncher.exe" Source="PAAlternativeLauncher.exe" KeyPath="yes">
+          <Shortcut Id="StartMenuShortcut" Directory="ProductMenuDir"
+                    Name="PA Alternative Launcher" Icon="PAAlternativeLauncher.exe" Advertise="yes"/>
+        </File>
+      </Component>
+    </DirectoryRef>
+    <!-- Runtime DLLs -->
+    <ComponentGroup Id="RuntimeDlls" Directory="INSTALLDIR">
+      <Component Guid="*">
+        <File Name="D3Dcompiler_47.dll" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="libEGL.dll" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="libgcc_s_seh-1.dll" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="libGLESV2.dll" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="libstdc++-6.dll" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="libwinpthread-1.dll" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="opengl32sw.dll" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="libeay32.dll" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="ssleay32.dll" KeyPath="yes"/>
+      </Component>
+    </ComponentGroup>
+    <!-- Qt DLLs -->
+    <ComponentGroup Id="QtDlls" Directory="INSTALLDIR">
+      <Component Guid="*">
+        <File Name="Qt5Core.dll" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="Qt5Gui.dll" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="Qt5Network.dll" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="Qt5Svg.dll" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="Qt5Widgets.dll" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="Qt5WinExtras.dll" KeyPath="yes"/>
+      </Component>
+    </ComponentGroup>
+    <!-- Bearer -->
+    <ComponentGroup Id="Bearer" Directory="BearerDir"
+                    Source="bearer">
+      <Component Guid="*">
+        <File Name="qgenericbearer.dll" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="qnativewifibearer.dll" KeyPath="yes"/>
+      </Component>
+    </ComponentGroup>
+    <!-- Icon Engines -->
+    <ComponentGroup Id="IconEngines" Directory="IconEnginesDir"
+                    Source="iconengines">
+      <Component Guid="*">
+        <File Name="qsvgicon.dll" KeyPath="yes"/>
+      </Component>
+    </ComponentGroup>
+    <!-- Image Formats -->
+    <ComponentGroup Id="ImageFormats" Directory="ImageFormatsDir"
+                    Source="imageformats">
+      <Component Guid="*">
+        <File Name="qdds.dll" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="qgif.dll" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="qicns.dll" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="qico.dll" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="qjp2.dll" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="qjpeg.dll" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="qmng.dll" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="qsvg.dll" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="qtga.dll" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="qtiff.dll" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="qwbmp.dll" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="qwebp.dll" KeyPath="yes"/>
+      </Component>
+    </ComponentGroup>
+    <!-- Platform Plugins -->
+    <ComponentGroup Id="PlatformPlugins" Directory="PlatformPluginsDir"
+                    Source="platforms">
+      <Component Guid="*">
+        <File Name="qwindows.dll" KeyPath="yes"/>
+      </Component>
+    </ComponentGroup>
+    <!-- Translations -->
+    <ComponentGroup Id="Translations" Directory="TranslationsDir"
+                    Source="translations">
+      <Component Guid="*">
+        <File Name="qt_ca.qm" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="qt_cs.qm" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="qt_de.qm" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="qt_fi.qm" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="qt_fr.qm" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="qt_hu.qm" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="qt_it.qm" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="qt_ja.qm" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="qt_ko.qm" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="qt_lv.qm" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="qt_ru.qm" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="qt_sk.qm" KeyPath="yes"/>
+      </Component>
+      <Component Guid="*">
+        <File Name="qt_uk.qm" KeyPath="yes"/>
+      </Component>
+    </ComponentGroup>
+
+    <!-- This describes what will actually get installed -->
+    <Feature Id="Core">
+      <ComponentRef Id="PAAlternativeLauncher.exe"/>
+      <ComponentGroupRef Id="RuntimeDlls"/>
+      <ComponentGroupRef Id="QtDlls"/>
+      <ComponentGroupRef Id="Bearer"/>
+      <ComponentGroupRef Id="IconEngines"/>
+      <ComponentGroupRef Id="ImageFormats"/>
+      <ComponentGroupRef Id="PlatformPlugins"/>
+      <ComponentGroupRef Id="Translations"/>
+      <ComponentRef Id="ProductMenuDir"/>
+    </Feature>
+
+    <Property Id="ARPPRODUCTICON" Value="appicon.ico"/>
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLDIR"/>
+    <!-- To offer the option to lanch after installation -->
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1"/>
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Launch program after installation"/>
+    <Property Id="WixShellExecTarget" Value="[#PAAlternativeLauncher.exe]"/>
+    <CustomAction Id="LaunchApplication" BinaryKey="WixCA"
+                  DllEntry="WixShellExec" Impersonate="yes"/>
+    <UI>
+      <UIRef Id="WixUI_InstallDir"/>
+      <UIRef Id="WixUI_ErrorProgressText"/>
+      <!-- To offer the option to lanch after installation -->
+      <Publish Dialog="ExitDialog" Control="Finish" Event="DoAction"
+               Value="LaunchApplication">
+        WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed
+      </Publish>
+    </UI>
+    <!-- Uncomment these lines to modify look of the installer
+    <WixVariable Id="WixUIBannerBmp" Value="installer-header.bmp"/>
+    <WixVariable Id="WixUIDialogBmp" Value="installer-welcome.bmp"/>
+    -->
+    <WixVariable Id="WixUILicenseRtf" Value="..\Licence.rtf"/>
+  </Product>
+</Wix>
