@@ -123,4 +123,14 @@ AdvancedDialog::optimus_t AdvancedDialog::useOptimus()
 	return nooptimus;
 }
 
+bool AdvancedDialog::useSteamRuntime()
+{
+#ifdef linux
+	return m_useSteamRuntimeCheckBox->isChecked();
+#else
+	return true;
+#endif
+}
+
+
 #include "advanceddialog.moc"

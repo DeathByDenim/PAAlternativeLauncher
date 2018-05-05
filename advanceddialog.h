@@ -21,7 +21,7 @@ public:
 
 	QString parameters() {return m_parametersLineEdit->text();}
 	optimus_t useOptimus();
-	bool useSteamRuntime() {return m_useSteamRuntimeCheckBox->isChecked();}
+	bool useSteamRuntime();
 
 private:
 	QString m_parameters;

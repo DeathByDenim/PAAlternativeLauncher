@@ -574,7 +574,7 @@ void PAAlternativeLauncher::advancedPushButtonClicked(bool)
 		settings.setValue("/usesteamruntime", mUseSteamRuntime);
 		settings.endGroup();
 //		mModDatabaseFrame->setVisible(!mExtraParameters.contains("--nomods"));
-
+#ifdef linux
 		if(mUseSteamRuntime)
 		{
 			if(!QDir(mInstallPathLineEdit->text()).rename("steam-runtime.bak", "steam-runtime"))
@@ -585,6 +585,7 @@ void PAAlternativeLauncher::advancedPushButtonClicked(bool)
 			if(!QDir(mInstallPathLineEdit->text()).rename("steam-runtime", "steam-runtime.bak"))
 				info.warning("Advanced", "Failed to rename \"steam-runtime\" to \"steam-runtime.bak\"");
 		}
+#endif
 	}
 
 	delete advanceddialog;

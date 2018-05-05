@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-  <Product Id="*" Name="PA Alternative Launcher" Version="1.0.0" Manufacturer="PA Alternative Launcher"
+  <Product Id="*" Name="PA Alternative Launcher" Version="1.0.1" Manufacturer="PA Alternative Launcher"
            UpgradeCode="760A2759-65B9-4A3B-A569-2081C4FBECE5"
            Language="1033" Codepage="1252">
     <Package Id="*" InstallerVersion="200" Compressed="yes" Languages="1033"
