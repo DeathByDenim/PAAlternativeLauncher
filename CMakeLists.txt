@@ -11,6 +11,9 @@ set(CMAKE_AUTOMOC ON)
 # to always look for includes there:
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
+if(APPLE)
+	set(CMAKE_OSX_DEPLOYMENT_TARGET 10.9)
+endif(APPLE)
 
 find_package(Qt5Widgets REQUIRED)
 find_package(Qt5Network REQUIRED)
