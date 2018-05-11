@@ -190,7 +190,7 @@ PAAlternativeLauncher::PAAlternativeLauncher()
 	QWidget *about_widget = new QWidget(main_widget);
 	QHBoxLayout *about_layout = new QHBoxLayout(about_widget);
 
-	QLabel *created_by_label = new QLabel(tr("Created by") + " DeathByDenim", about_widget);
+	QLabel *created_by_label = new QLabel(tr("Created by") + " DeathByDenim " + tr("using Qt5"), about_widget);
 	created_by_label->setStyleSheet("QLabel {color: white}");
 	about_layout->addWidget(created_by_label);
 	QLabel *blackmage_label = new QLabel(about_widget);
