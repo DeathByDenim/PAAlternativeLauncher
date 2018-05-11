@@ -39,7 +39,7 @@ void Information::critical(const QString& title, const QString& text)
 	mMutex.unlock();
 }
 
-bool Information::warning(const QString& title, const QString& text)
+bool Information::warning(const QString& title, const QString& text, bool yesno)
 {
 	mMutex.lock();
 	m_logfile.write("[WARN]  (", 9);
@@ -49,7 +49,12 @@ bool Information::warning(const QString& title, const QString& text)
 	m_logfile.write("\n", 1);
 	m_logfile.flush();
 
-	bool yes = (QMessageBox::warning(m_parent, title, text, QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes);
+	bool yes = true;
+	if(yesno)
+		yes = (QMessageBox::warning(m_parent, title, text, QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes);
+	else
+		QMessageBox::warning(m_parent, title, text);
+
 	mMutex.unlock();
 
 	return yes;

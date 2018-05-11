@@ -565,25 +565,29 @@ void PAAlternativeLauncher::advancedPushButtonClicked(bool)
 	AdvancedDialog *advanceddialog = new AdvancedDialog(mExtraParameters, mUseOptimus, mUseSteamRuntime, this);
 	if(advanceddialog->exec() == QDialog::Accepted)
 	{
+		settings.beginGroup("streams/" + mStreamsComboBox->currentText());
+		bool old_use_steam_runtime = settings.value("/usesteamruntime", true).toBool();
 		mExtraParameters = advanceddialog->parameters();
 		mUseOptimus = advanceddialog->useOptimus();
 		mUseSteamRuntime = advanceddialog->useSteamRuntime();
-		settings.beginGroup("streams/" + mStreamsComboBox->currentText());
 		settings.setValue("/extraparameters", mExtraParameters);
 		settings.setValue("/useoptirun", (int)mUseOptimus);
 		settings.setValue("/usesteamruntime", mUseSteamRuntime);
 		settings.endGroup();
 //		mModDatabaseFrame->setVisible(!mExtraParameters.contains("--nomods"));
 #ifdef linux
-		if(mUseSteamRuntime)
+		if(mUseSteamRuntime != old_use_steam_runtime)
 		{
-			if(!QDir(mInstallPathLineEdit->text()).rename("steam-runtime.bak", "steam-runtime"))
-				info.warning("Advanced", "Failed to rename \"steam-runtime.bak\" to \"steam-runtime\"");
-		}
-		else
-		{
-			if(!QDir(mInstallPathLineEdit->text()).rename("steam-runtime", "steam-runtime.bak"))
-				info.warning("Advanced", "Failed to rename \"steam-runtime\" to \"steam-runtime.bak\"");
+			if(mUseSteamRuntime)
+			{
+				if(!QDir(mInstallPathLineEdit->text()).rename("steam-runtime.bak", "steam-runtime"))
+					info.warning("Advanced", "Failed to rename \"steam-runtime.bak\" to \"steam-runtime\"", false);
+			}
+			else
+			{
+				if(!QDir(mInstallPathLineEdit->text()).rename("steam-runtime", "steam-runtime.bak"))
+					info.warning("Advanced", "Failed to rename \"steam-runtime\" to \"steam-runtime.bak\"", false);
+			}
 		}
 #endif
 	}
