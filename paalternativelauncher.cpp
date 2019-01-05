@@ -644,13 +644,13 @@ void PAAlternativeLauncher::authenticateFinished()
 			}
 			else
 			{
-				QMessageBox::critical(this, tr("Authenticate"), tr("Empty session ticket"));
+				info.critical(tr("Authenticate"), tr("Empty session ticket"));
 				setState(login_state);
 			}
 		}
 		else
 		{
-			QMessageBox::critical(this, tr("Authenticate"), tr("Error while authenticating.\n%1").arg(reply->errorString()));
+			info.critical(tr("Authenticate"), tr("Error while authenticating.\n%1").arg(reply->errorString()));
 			setState(login_state);
 		}
 
@@ -707,7 +707,7 @@ void PAAlternativeLauncher::streamsFinished()
 		}
 		else
 		{
-			QMessageBox::critical(this, tr("Streams"), tr("Error while getting streams.\n%1").arg(reply->errorString()));
+			info.critical(tr("Streams"), tr("Error while getting streams.\n%1").arg(reply->errorString()));
 			setState(login_state);
 		}
 
@@ -733,7 +733,7 @@ void PAAlternativeLauncher::manifestReadyRead()
 			if(res != Z_OK && res != Z_STREAM_END)
 			{
 				reply->abort();
-				QMessageBox::warning(this, "ZLib", mZstream.msg);
+				info.warning("ZLib", mZstream.msg, false);
 				return;
 			}
 
@@ -745,7 +745,7 @@ void PAAlternativeLauncher::manifestReadyRead()
 		else
 		{
 			reply->abort();
-			QMessageBox::critical(this, tr("Manifest"), tr("Error while getting manifest (1).\n%1").arg(reply->errorString()));
+			info.critical(tr("Manifest"), tr("Error while getting manifest (1).\n%1").arg(reply->errorString()));
 		}
 	}
 }
@@ -765,7 +765,7 @@ void PAAlternativeLauncher::manifestFinished()
 			int res = inflateEnd(&mZstream);
 			if(res != Z_OK && res != Z_STREAM_END)
 			{
-				QMessageBox::warning(this, "ZLib 2", mZstream.msg);
+				info.warning("ZLib 2", mZstream.msg, false);
 				return;
 			}
 
@@ -801,7 +801,7 @@ void PAAlternativeLauncher::manifestFinished()
 			if(reply->error() == QNetworkReply::AuthenticationRequiredError)
 				setState(login_state);
 			else
-				QMessageBox::critical(this, tr("Manifest"), tr("Error while getting manifest (2).\n%1").arg(reply->errorString()));
+				info.critical(tr("Manifest"), tr("Error while getting manifest (2).\n%1").arg(reply->errorString()));
 		}
 
 		reply->deleteLater();
@@ -831,7 +831,7 @@ void PAAlternativeLauncher::streamNewsReplyFinished()
 			if(reply->error() == QNetworkReply::AuthenticationRequiredError)
 				setState(login_state);
 			else
-				QMessageBox::critical(this, tr("Stream news"), tr("Error while getting stream news.\n%1").arg(reply->errorString()));
+				info.critical(tr("Stream news"), tr("Error while getting stream news.\n%1").arg(reply->errorString()));
 		}
 
 		reply->deleteLater();
@@ -856,7 +856,7 @@ void PAAlternativeLauncher::prepareZLib()
 	mZstream.opaque = Z_NULL;
 	if(inflateInit2(&mZstream, 16 + MAX_WBITS) != Z_OK)
 	{
-		QMessageBox::critical(this, "ZLib", mZstream.msg);
+		info.critical("ZLib", mZstream.msg);
 		return;
 	}
 	mManifestJson.close();
