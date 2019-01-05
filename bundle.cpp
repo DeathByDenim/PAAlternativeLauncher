@@ -29,7 +29,7 @@ void Bundle::verify(QJsonObject* array)
 
 	mNumVerified = 0;
 	mNumToVerify = 0;
-	
+
 	mChecksum = (*array)["checksum"].toString();
 	mTotalSize = (*array)["size"].toString().toULong();
 	QJsonArray entries = (*array)["entries"].toArray();

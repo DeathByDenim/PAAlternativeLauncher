@@ -4,6 +4,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QFile>
+#include <QDir>
 #include <QUrl>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
@@ -240,6 +241,10 @@ void Patcher::processSymLinks()
 				// For proper symlinks, we need to find the relative path.
 				QStringList target_path = slink.key().split(QRegExp("[\\\\/]"));
 				QStringList source_path = slink.value().split(QRegExp("[\\\\/]"));
+
+				// Make sure directory exists
+				QDir(target_path.mid(0, target_path.size() - 1).join("/")).mkpath(".");
+
 				int i;
 				for(i = 0; i < target_path.count() - 1; i++)
 				{
