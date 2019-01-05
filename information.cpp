@@ -35,8 +35,8 @@ void Information::critical(const QString& title, const QString& text)
 	m_logfile.write(errortext.replace('\n', ' ').toUtf8());
 	m_logfile.write("\n", 1);
 	m_logfile.flush();
-	QMessageBox::critical(m_parent, title, text);
 	mMutex.unlock();
+	QMessageBox::critical(m_parent, title, text);
 }
 
 bool Information::warning(const QString& title, const QString& text, bool yesno)
@@ -48,6 +48,7 @@ bool Information::warning(const QString& title, const QString& text, bool yesno)
 	m_logfile.write(text.toUtf8());
 	m_logfile.write("\n", 1);
 	m_logfile.flush();
+	mMutex.unlock();
 
 	bool yes = true;
 	if(yesno)
@@ -55,7 +56,6 @@ bool Information::warning(const QString& title, const QString& text, bool yesno)
 	else
 		QMessageBox::warning(m_parent, title, text);
 
-	mMutex.unlock();
 
 	return yes;
 }
