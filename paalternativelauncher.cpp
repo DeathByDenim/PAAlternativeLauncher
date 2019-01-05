@@ -36,6 +36,7 @@
 #endif
 #include <QFile>
 #include <QDir>
+#include <QSignalBlocker>
 #include <zlib.h>
 #include "information.h"
 #include "version.h"
@@ -115,7 +116,6 @@ PAAlternativeLauncher::PAAlternativeLauncher()
 	stream_layout->addWidget(streams_label);
 	mStreamsComboBox = new QComboBox(stream_widget);
 	stream_layout->addWidget(mStreamsComboBox);
-	connect(mStreamsComboBox, SIGNAL(currentIndexChanged(int)), SLOT(streamsComboBoxCurrentIndexChanged(int)));
 	mUpdateAvailableLabel = new QLabel("", stream_widget);
 	mUpdateAvailableLabel->setStyleSheet("QLabel {font-weight: bold; color: white}");
 	mUpdateAvailableLabel->setPalette(palettewhite);
@@ -215,7 +215,11 @@ PAAlternativeLauncher::PAAlternativeLauncher()
 	for(QStringList::const_iterator stream = streamgroups.constBegin(); stream != streamgroups.constEnd(); ++stream)
 		mStreamsComboBox->addItem(*stream);
 	settings.endGroup();
-	mStreamsComboBox->setCurrentText("stable");
+	connect(mStreamsComboBox, SIGNAL(currentIndexChanged(int)), SLOT(streamsComboBoxCurrentIndexChanged(int)));
+	if(streamgroups.contains(settings.value("streams/defaultstream").toString()))
+		mStreamsComboBox->setCurrentText(settings.value("streams/defaultstream").toString());
+	else
+		mStreamsComboBox->setCurrentText("stable");
 
 	mSessionTicket = settings.value("login/sessionticket").toString();
 	if(!mSessionTicket.isEmpty())
@@ -431,6 +435,7 @@ void PAAlternativeLauncher::streamsComboBoxCurrentIndexChanged(int)
 		mUpdateAvailableLabel->setVisible(uber_version != current_version);
 	}
 
+	settings.setValue("streams/defaultstream", current_stream);
 //	mModDatabaseFrame->setVisible(!mExtraParameters.contains("--nomods"));
 }
 
@@ -663,37 +668,42 @@ void PAAlternativeLauncher::streamsFinished()
 			info.log("Streams", "Streams received.", true);
 			setState(download_state);
 
-			mStreamsComboBox->clear();
 			QSettings settings;
-			settings.beginGroup("streams");
-			info.log("Streams", "Decoding data.", true);
-			QJsonDocument authjson = QJsonDocument::fromJson(reply->readAll());
-			QJsonArray streams = authjson.object()["Streams"].toArray();
-			info.log("Streams", "Processing streams.", true);
-			for(QJsonArray::const_iterator stream = streams.constBegin(); stream != streams.constEnd(); ++stream)
+			// Curly braces for signal blocker
 			{
-				QJsonObject object = (*stream).toObject();
-				QString download_url = object["DownloadUrl"].toString();
-				QString title_folder = object["TitleFolder"].toString();
-				QString manifest_name = object["ManifestName"].toString();
-				QString auth_suffix = object["AuthSuffix"].toString();
-				QString stream_name = object["StreamName"].toString();
+				const QSignalBlocker blocker(mStreamsComboBox);
+				mStreamsComboBox->clear();
+				settings.beginGroup("streams");
+				info.log("Streams", "Decoding data.", true);
+				QJsonDocument authjson = QJsonDocument::fromJson(reply->readAll());
+				QJsonArray streams = authjson.object()["Streams"].toArray();
+				info.log("Streams", "Processing streams.", true);
+				for(QJsonArray::const_iterator stream = streams.constBegin(); stream != streams.constEnd(); ++stream)
+				{
+					QJsonObject object = (*stream).toObject();
+					QString download_url = object["DownloadUrl"].toString();
+					QString title_folder = object["TitleFolder"].toString();
+					QString manifest_name = object["ManifestName"].toString();
+					QString auth_suffix = object["AuthSuffix"].toString();
+					QString stream_name = object["StreamName"].toString();
 
-				info.log("Streams", QString("Adding %1.").arg(stream_name), true);
-				mStreamsComboBox->addItem(stream_name, object.toVariantMap());
-				settings.setValue(stream_name + "/name", stream_name);
+					info.log("Streams", QString("Adding %1.").arg(stream_name), true);
+					mStreamsComboBox->addItem(stream_name, object.toVariantMap());
+					settings.setValue(stream_name + "/name", stream_name);
 
-				info.log("Streams", "Retrieving news", true);
-				// Get the news
-				QNetworkRequest request(QUrl("https://uberent.com/Launcher/StreamNews?StreamName=" + stream_name + "&ticket=" + mSessionTicket));
-				request.setRawHeader("X-Authorization", mSessionTicket.toUtf8());
-				request.setRawHeader("X-Clacks-Overhead", "GNU Terry Pratchett");
-				request.setRawHeader("User-Agent", QString("PAAlternativeLauncher/%1").arg(VERSION).toUtf8());
-				request.setAttribute(QNetworkRequest::User, stream_name);
-				QNetworkReply *stream_news_reply = mNetworkAccessManager->get(request);
-				connect(stream_news_reply, SIGNAL(finished()), SLOT(streamNewsReplyFinished()));
+					info.log("Streams", "Retrieving news", true);
+					// Get the news
+					QNetworkRequest request(QUrl("https://uberent.com/Launcher/StreamNews?StreamName=" + stream_name + "&ticket=" + mSessionTicket));
+					request.setRawHeader("X-Authorization", mSessionTicket.toUtf8());
+					request.setRawHeader("X-Clacks-Overhead", "GNU Terry Pratchett");
+					request.setRawHeader("User-Agent", QString("PAAlternativeLauncher/%1").arg(VERSION).toUtf8());
+					request.setAttribute(QNetworkRequest::User, stream_name);
+					QNetworkReply *stream_news_reply = mNetworkAccessManager->get(request);
+					connect(stream_news_reply, SIGNAL(finished()), SLOT(streamNewsReplyFinished()));
+				}
+				settings.endGroup();
 			}
-			settings.endGroup();
+			mStreamsComboBox->setCurrentText(settings.value("streams/defaultstream").toString());
 		}
 		else
 		{
