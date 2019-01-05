@@ -81,7 +81,7 @@ PAAlternativeLauncher::PAAlternativeLauncher()
 	QWidget *main_widget = new QWidget(this);
 	QVBoxLayout *main_layout = new QVBoxLayout(main_widget);
 	
-	QLabel *disclaimer_label = new QLabel(tr("This is an UNOFFICIAL launcher and not connected to Uber in any way."), main_widget);
+	QLabel *disclaimer_label = new QLabel(tr("This is an UNOFFICIAL launcher and not connected to Planetary Annihilation Inc. in any way."), main_widget);
 	disclaimer_label->setStyleSheet("QLabel {color: red; font-weight: bold;}");
 	disclaimer_label->setAlignment(Qt::AlignCenter);
 	disclaimer_label->setAutoFillBackground(true);
@@ -180,7 +180,7 @@ PAAlternativeLauncher::PAAlternativeLauncher()
 	mPatchProgressbar->setMaximum(100);
 	main_layout->addWidget(mPatchProgressbar);
 
-	QLabel *disclaimer_label2 = new QLabel(tr("This is an UNOFFICIAL launcher and not connected to Uber in any way."), main_widget);
+	QLabel *disclaimer_label2 = new QLabel(tr("This is an UNOFFICIAL launcher and not connected to Planetary Annihilation Inc. in any way."), main_widget);
 	disclaimer_label2->setStyleSheet("QLabel {color: red; font-weight: bold;}");
 	disclaimer_label2->setAlignment(Qt::AlignCenter);
 	disclaimer_label2->setAutoFillBackground(true);
