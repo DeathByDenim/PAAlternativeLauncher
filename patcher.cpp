@@ -231,13 +231,6 @@ void Patcher::processSymLinks()
 				if(target_file.exists())
 					target_file.remove();
 
-#ifdef _WIN32
-				if(!source_file.copy(slink.key()))
-				{
-					emit error(tr("Error copying duplicate file \"%1\" to \"%2\".\n%3").arg(slink.value()).arg(slink.value()).arg(source_file.errorString()));
-					return;
-				}
-#else
 				// For proper symlinks, we need to find the relative path.
 				QStringList target_path = slink.key().split(QRegExp("[\\\\/]"));
 				QStringList source_path = slink.value().split(QRegExp("[\\\\/]"));
@@ -245,6 +238,13 @@ void Patcher::processSymLinks()
 				// Make sure directory exists
 				QDir(target_path.mid(0, target_path.size() - 1).join("/")).mkpath(".");
 
+#ifdef _WIN32
+				if(!source_file.copy(slink.key()))
+				{
+					emit error(tr("Error copying duplicate file \"%1\" to \"%2\".\n%3").arg(slink.value()).arg(slink.value()).arg(source_file.errorString()));
+					return;
+				}
+#else
 				int i;
 				for(i = 0; i < target_path.count() - 1; i++)
 				{
