@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-  <Product Id="*" Name="PA Alternative Launcher" Version="1.0.1" Manufacturer="PA Alternative Launcher"
+  <Product Id="*" Name="PA Alternative Launcher" Version="1.0.2" Manufacturer="PA Alternative Launcher"
            UpgradeCode="760A2759-65B9-4A3B-A569-2081C4FBECE5"
            Language="1033" Codepage="1252">
     <Package Id="*" InstallerVersion="200" Compressed="yes" Languages="1033"
-             SummaryCodepage="1252" InstallScope="perMachine"/>
+             SummaryCodepage="1252" InstallScope="perMachine" Platform="x64"/>
     <Media Id="1" Cabinet="data.cab" EmbedCab="yes"/>
     <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed. If you are trying to downgrade, please uninstall the newer version first."
                   AllowSameVersionUpgrades="yes"/>
@@ -35,7 +35,7 @@
 
     <DirectoryRef Id="INSTALLDIR">
       <!-- Main Executable -->
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="PAAlternativeLauncher.exe" Source="PAAlternativeLauncher.exe" KeyPath="yes">
           <Shortcut Id="StartMenuShortcut" Directory="ProductMenuDir"
                     Name="PA Alternative Launcher" Icon="PAAlternativeLauncher.exe" Advertise="yes"/>
@@ -44,159 +44,159 @@
     </DirectoryRef>
     <!-- Runtime DLLs -->
     <ComponentGroup Id="RuntimeDlls" Directory="INSTALLDIR">
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="D3Dcompiler_47.dll" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="libEGL.dll" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="libgcc_s_seh-1.dll" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="libGLESV2.dll" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="libstdc++-6.dll" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="libwinpthread-1.dll" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="opengl32sw.dll" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="libeay32.dll" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="ssleay32.dll" KeyPath="yes"/>
       </Component>
     </ComponentGroup>
     <!-- Qt DLLs -->
     <ComponentGroup Id="QtDlls" Directory="INSTALLDIR">
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="Qt5Core.dll" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="Qt5Gui.dll" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="Qt5Network.dll" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="Qt5Svg.dll" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="Qt5Widgets.dll" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="Qt5WinExtras.dll" KeyPath="yes"/>
       </Component>
     </ComponentGroup>
     <!-- Bearer -->
     <ComponentGroup Id="Bearer" Directory="BearerDir"
                     Source="bearer">
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qgenericbearer.dll" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qnativewifibearer.dll" KeyPath="yes"/>
       </Component>
     </ComponentGroup>
     <!-- Icon Engines -->
     <ComponentGroup Id="IconEngines" Directory="IconEnginesDir"
                     Source="iconengines">
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qsvgicon.dll" KeyPath="yes"/>
       </Component>
     </ComponentGroup>
     <!-- Image Formats -->
     <ComponentGroup Id="ImageFormats" Directory="ImageFormatsDir"
                     Source="imageformats">
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qdds.dll" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qgif.dll" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qicns.dll" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qico.dll" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qjp2.dll" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qjpeg.dll" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qmng.dll" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qsvg.dll" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qtga.dll" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qtiff.dll" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qwbmp.dll" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qwebp.dll" KeyPath="yes"/>
       </Component>
     </ComponentGroup>
     <!-- Platform Plugins -->
     <ComponentGroup Id="PlatformPlugins" Directory="PlatformPluginsDir"
                     Source="platforms">
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qwindows.dll" KeyPath="yes"/>
       </Component>
     </ComponentGroup>
     <!-- Translations -->
     <ComponentGroup Id="Translations" Directory="TranslationsDir"
                     Source="translations">
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qt_ca.qm" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qt_cs.qm" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qt_de.qm" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qt_fi.qm" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qt_fr.qm" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qt_hu.qm" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qt_it.qm" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qt_ja.qm" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qt_ko.qm" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qt_lv.qm" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qt_ru.qm" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qt_sk.qm" KeyPath="yes"/>
       </Component>
-      <Component Guid="*">
+      <Component Guid="*" Win64="yes">
         <File Name="qt_uk.qm" KeyPath="yes"/>
       </Component>
     </ComponentGroup>
