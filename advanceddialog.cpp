@@ -133,4 +133,4 @@ bool AdvancedDialog::useSteamRuntime()
 }
 
 
-#include "advanceddialog.moc"
+#include "moc_advanceddialog.cpp"

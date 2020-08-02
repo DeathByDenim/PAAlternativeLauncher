@@ -1067,4 +1067,4 @@ void PAAlternativeLauncher::convertOldSettings()
 
 }
 
-#include "paalternativelauncher.moc"
+#include "moc_paalternativelauncher.cpp"

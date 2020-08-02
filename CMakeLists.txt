@@ -5,24 +5,24 @@ set(MAJOR_VERSION "1")
 set(MINOR_VERSION "0")
 set(PATCH_VERSION "2")
 
-# Tell CMake to run moc when necessary:
 set(CMAKE_AUTOMOC ON)
-# As moc files are generated in the binary dir, tell CMake
-# to always look for includes there:
-set(CMAKE_INCLUDE_CURRENT_DIR ON)
+set(CMAKE_AUTORCC ON)
+
+if(CMAKE_VERSION VERSION_LESS "3.7.0")
+    set(CMAKE_INCLUDE_CURRENT_DIR ON)
+endif()
 
 if(APPLE)
 	set(CMAKE_OSX_DEPLOYMENT_TARGET 10.9)
 endif(APPLE)
 
-find_package(Qt5Widgets REQUIRED)
-find_package(Qt5Network REQUIRED)
-find_package(Qt5Concurrent REQUIRED)
+find_package(Qt5 COMPONENTS Widgets Network Concurrent REQUIRED)
+
 if(UNIX)
-	find_package(Qt5DBus REQUIRED)
+	find_package(Qt5 COMPONENTS DBus REQUIRED)
 endif(UNIX)
 if(WIN32)
-	find_package(Qt5WinExtras REQUIRED)
+	find_package(Qt5 COMPONENTS WinExtras REQUIRED)
 endif(WIN32)
 find_package(ZLIB REQUIRED)
 
@@ -33,12 +33,13 @@ if(WIN32)
 	set(paalternativelauncher_RCC_SRCS "paalternativelauncher.rc")
 endif(WIN32)
 
-include_directories(${Qt5Core_INCLUDE_DIRS} ${Qt5Network_INCLUDE_DIRS} ${Qt5Concurrent_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR} ${ZLIB_INCLUDE_DIR})
-if(UNIX)
-	 include_directories(${Qt5DBus_INCLUDE_DIRS})
-endif(UNIX)
+#include_directories(${Qt5Core_INCLUDE_DIRS} ${Qt5Network_INCLUDE_DIRS} ${Qt5Concurrent_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR} ${ZLIB_INCLUDE_DIR})
+#if(UNIX)
+#	 include_directories(${Qt5DBus_INCLUDE_DIRS})
+#endif(UNIX)
 
 set(paalternativelauncher_SRCS moddatabaseframe.cpp bundle.cpp patcher.cpp paalternativelauncher.cpp main.cpp information.cpp advanceddialog.cpp)
+set(paalternativelauncher_RCC_SRCS paalternativelauncher.qrc)
 qt5_add_resources(paalternativelauncher_RCC_SRCS paalternativelauncher.qrc)
 
 add_executable(paalternativelauncher ${paalternativelauncher_SRCS} ${paalternativelauncher_RCC_SRCS})

@@ -291,4 +291,4 @@ void Patcher::processSymLinks()
 }
 
 
-#include "patcher.moc"
+#include "moc_patcher.cpp"

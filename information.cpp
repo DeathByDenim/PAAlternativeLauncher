@@ -77,4 +77,4 @@ void Information::log(const QString& title, const QString& text, bool verbose)
 
 Information info;
 
-#include "information.moc"
+#include "moc_information.cpp"

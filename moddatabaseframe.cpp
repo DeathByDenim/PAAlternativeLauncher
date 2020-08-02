@@ -610,4 +610,4 @@ void ModDatabaseFrame::enableMod(ModDatabaseFrame::mod_t * mod)
 }
 
 
-#include "moddatabaseframe.moc"
+#include "moc_moddatabaseframe.cpp"

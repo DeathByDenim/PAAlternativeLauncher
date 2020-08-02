@@ -421,4 +421,4 @@ bool Bundle::createEmptyFile(const QString& file_name)
 		return false;
 }
 
-#include "bundle.moc"
+#include "moc_bundle.cpp"
