@@ -1,0 +1,20 @@
+PA Alternative Launcher
+-------------------------------------
+
+Prerequisites
+---------------
+
+To install the prerequisites on Ubuntu/Debian, please use the following
+command:
+
+sudo apt-get install qt5-default zlib1g
+
+If you're on another distribution the packages may be named differently, so
+please consult your package manager.
+
+More information
+-----------------
+
+For more information and the latest version, please see the forum post at:
+
+https://forums.planetaryannihilation.com/threads/alternative-pa-launcher.68233/
